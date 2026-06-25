@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 export default function RegisterPage() {
   const [username, setUsername] = useState('');
@@ -17,12 +18,48 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
+
+    const supabase = createSupabaseBrowserClient();
+
+    const { error: authError } = await supabase.auth.signUp({
+      email:    email.trim(),
+      password,
+      options: {
+        data: {
+          username: username.trim(), // disimpan di user_metadata
+        },
+      },
+    });
+
+    if (authError) {
+      if (authError.message.includes('already registered')) {
+        setError('Email ini sudah terdaftar. Silakan masuk.');
+      } else if (authError.message.includes('Password should be')) {
+        setError('Password minimal 6 karakter.');
+      } else {
+        setError(authError.message);
+      }
+      setLoading(false);
+      return;
+    }
+
+    // Supabase defaultnya kirim email konfirmasi.
+    // Kalau di Supabase dashboard kamu matikan "Confirm email",
+    // user langsung bisa login dan kita redirect ke dashboard.
+    // Kalau email konfirmasi aktif, tampilkan pesan untuk cek inbox.
+    setSuccess('Pendaftaran berhasil! Cek email kamu untuk konfirmasi akun.');
+    setLoading(false);
+
+    // Uncomment baris ini kalau kamu matikan email konfirmasi di Supabase:
+    // router.push('/dashboard');
+    // router.refresh();
   };
 
   return (
     <div className="flex min-h-screen">
 
-      {/* Kiri — Visual (sama dengan login) */}
+      {/* Kiri — Visual */}
       <div className="hidden lg:flex w-[45%] bg-[#185FA5] flex-col items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute w-87.5 h-87.5 rounded-full border border-white/10 -top-20 -left-20" />
         <div className="absolute w-70 h-70 rounded-full border border-white/10 -bottom-16 -right-16" />

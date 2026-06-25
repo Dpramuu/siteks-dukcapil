@@ -3,7 +3,7 @@ import type { Template, Platform } from './types';
 
 type Props = {
   initial?: Template | null;
-  onSave: (data: Omit<Template, 'id'>) => void;
+  onSave: (data: { name: string; platform: Platform; content: string }) => void;
   onClose: () => void;
 };
 

@@ -10,12 +10,9 @@ type FilterType = 'all' | Platform;
 
 // ── Dummy data — ganti dengan fetch Supabase ──
 const DUMMY: Template[] = [
-  { id:'1', name:'Promo Produk',      platform:'Instagram', content:'Dapatkan penawaran terbaik hari ini! Produk kami hadir dengan kualitas premium dan harga terjangkau. #promo #sale' },
-  { id:'2', name:'Motivasi Pagi',     platform:'Twitter',   content:'Selamat pagi! Mulai harimu dengan semangat dan tekad yang kuat. Setiap langkah membawa kita ke tujuan. #motivasi' },
-  { id:'3', name:'Behind The Scenes', platform:'Instagram', content:'Di balik layar pembuatan konten ini, ada banyak proses kreatif yang menarik. #bts #konten' },
-  { id:'4', name:'Tips & Trik',       platform:'TikTok',    content:'Tips hari ini: konsistensi adalah kunci sukses di media sosial. Posting rutin dan jaga kualitas! #tips' },
-  { id:'5', name:'Flash Sale',        platform:'Instagram', content:'FLASH SALE hari ini saja! Diskon hingga 50% untuk semua produk pilihan. #flashsale #diskon' },
-  { id:'6', name:'Weekend Vibes',     platform:'TikTok',    content:'Weekend mood on point! Nikmati akhir pekanmu dengan hal-hal positif. #weekend #vibes' },
+  { id: '1', user_id: 'u1', name: 'Caption Instagram', platform: 'Instagram', content: 'Ini caption untuk Instagram #hashtag', created_at: '', updated_at: '' },
+  { id: '2', user_id: 'u1', name: 'Caption TikTok', platform: 'TikTok', content: 'Ini caption untuk TikTok @mention', created_at: '', updated_at: '' },
+  { id: '3', user_id: 'u1', name: 'Caption Twitter', platform: 'Twitter', content: 'Ini caption untuk Twitter dengan link https://example.com', created_at: '', updated_at: '' },
 ];
 
 const FILTERS: { label: string; value: FilterType }[] = [
@@ -40,14 +37,21 @@ export default function TemplatePage() {
 
   const filtered = filter === 'all' ? templates : templates.filter(t => t.platform === filter);
 
-  const handleSave = (data: Omit<Template, 'id'>) => {
+  const handleSave = (data: { name: string; platform: Platform; content: string; }) => {
     if (editTarget) {
       // TODO: await supabase.from('templates').update(data).eq('id', editTarget.id);
       setTemplates(prev => prev.map(t => t.id === editTarget.id ? { ...t, ...data } : t));
     } else {
       const newId = String(Date.now());
+      const newTemplate: Template = {
+        id: newId,
+        user_id: 'u1',
+        created_at: '',
+        updated_at: '',
+        ...data,
+      };
       // TODO: await supabase.from('templates').insert([{ ...data }]);
-      setTemplates(prev => [...prev, { id: newId, ...data }]);
+      setTemplates(prev => [...prev, newTemplate]);
     }
     setEditTarget(null);
   };
