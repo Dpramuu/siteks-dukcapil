@@ -8,15 +8,11 @@ export default async function DashboardRoute() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const [
-    { data: schedules, error: errSchedules },
-  ] = await Promise.all([
-    supabase
-      .from('schedules')
-      .select('id, title, platform, status, scheduled_for')
-      .eq('user_id', user.id)
-      .order('scheduled_for', { ascending: true }),
-  ]);
+  const { data: schedules, error: errSchedules } = await supabase
+    .from('schedules')
+    .select('id, title, status, scheduled_for, schedule_platforms(platform, is_uploaded)')
+    .eq('user_id', user.id)
+    .order('scheduled_for', { ascending: true });
 
   if (errSchedules) throw new Error(errSchedules.message);
 
@@ -27,14 +23,19 @@ export default async function DashboardRoute() {
   const terjadwal   = allSchedules.filter(s => s.status === 'scheduled').length;
   const terbit      = allSchedules.filter(s => s.status === 'published').length;
 
-  // Hitung konten per platform
+  // Hitung konten per platform dari schedule_platforms
   const platformCount: Record<string, number> = {};
   for (const s of allSchedules) {
-    platformCount[s.platform] = (platformCount[s.platform] ?? 0) + 1;
+    const platforms = s.schedule_platforms ?? [];
+    // Hindari duplikat — hitung schedule sekali per platform
+    const unique = new Set(platforms.map((p: { platform: string }) => p.platform));
+    for (const p of unique) {
+      platformCount[p] = (platformCount[p] ?? 0) + 1;
+    }
   }
 
   // Hitung aktivitas per bulan tahun berjalan
-  const currentYear = new Date().getFullYear();
+  const currentYear  = new Date().getFullYear();
   const monthlyCount = Array(12).fill(0);
   for (const s of allSchedules) {
     const d = new Date(s.scheduled_for);

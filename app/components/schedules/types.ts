@@ -1,10 +1,19 @@
 // ── Platform ──
 export type Platform = 'Instagram' | 'TikTok' | 'Twitter';
-
-// ── Filter ──
 export type FilterType = 'all' | Platform;
 
-// ── Schedule ──
+// ── Schedule Platform (tabel baru) ──
+export type SchedulePlatform = {
+  id: string;
+  schedule_id: string;
+  platform: Platform;
+  is_uploaded: boolean;
+  uploaded_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+// ── Schedule — platform dihapus, diganti schedule_platforms ──
 export type ScheduleStatus = 'draft' | 'scheduled' | 'published';
 
 export type Schedule = {
@@ -13,18 +22,18 @@ export type Schedule = {
   template_id: string | null;
   title: string;
   caption: string;
-  platform: Platform;
   status: ScheduleStatus;
-  scheduled_for: string;   // ISO string dari Supabase timestamptz
+  scheduled_for: string;
   created_at: string;
   updated_at: string;
+  // Relasi — diisi saat fetch dengan join
+  schedule_platforms?: SchedulePlatform[];
 };
 
 export type ScheduleInsert = {
   template_id?: string | null;
   title: string;
   caption: string;
-  platform: Platform;
   status: ScheduleStatus;
   scheduled_for: string;
 };
@@ -60,6 +69,8 @@ export const STATUS_STYLE: Record<ScheduleStatus, { bg: string; tc: string; labe
   scheduled: { bg: '#1e3a5f', tc: '#60a5fa', label: 'Scheduled' },
   published: { bg: '#14532d', tc: '#4ade80', label: 'Published' },
 };
+
+export const PLATFORMS: Platform[] = ['Instagram', 'TikTok', 'Twitter'];
 
 export const MONTHS = [
   'Januari','Februari','Maret','April','Mei','Juni',

@@ -1,17 +1,23 @@
-// components/Sidebar.tsx
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: 'ti-layout-dashboard' },
   { href: '/template',  label: 'Template',  icon: 'ti-file-text' },
-  { href: '/schedules',  label: 'Schedules',  icon: 'ti-calendar' },
+  { href: '/schedules', label: 'Schedules', icon: 'ti-calendar' },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router   = useRouter();
+
+  const handleLogout = async () => {
+    await fetch('/(auth)/logout', { method: 'POST' });
+    router.refresh(); // refresh supaya layout server re-fetch session
+    router.push('/login');
+  };
 
   return (
     <aside className="flex h-screen w-56 flex-col border-r border-zinc-800 bg-zinc-900">
@@ -49,13 +55,13 @@ export default function Sidebar() {
 
       {/* Bottom */}
       <div className="border-t border-zinc-800 p-3">
-        <Link
-          href="/settings"
-          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-800/50 hover:text-white"
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-red-950/50 hover:text-red-400"
         >
-          <i className="ti ti-settings text-lg" aria-hidden="true" />
-          Settings
-        </Link>
+          <i className="ti ti-logout text-lg" aria-hidden="true" />
+          Logout
+        </button>
       </div>
     </aside>
   );

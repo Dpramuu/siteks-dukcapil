@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import type { ScheduleInsert } from '@/app/components/schedules/types';
 
+const PLATFORMS = ['Instagram', 'TikTok', 'Twitter'] as const;
+
 // POST /api/schedules
 export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
@@ -11,21 +13,42 @@ export async function POST(request: NextRequest) {
 
   const body: ScheduleInsert = await request.json();
 
-  const { data, error } = await supabase
+  // 1. Insert schedule
+  const { data: schedule, error: scheduleError } = await supabase
     .from('schedules')
     .insert([{
-      user_id:       user.id,              // paksa dari session — jangan percaya body
+      user_id:       user.id,
       template_id:   body.template_id ?? null,
       title:         body.title,
       caption:       body.caption,
-      platform:      body.platform,
-      status:        body.status ?? 'draft',
+      status:        body.status ?? 'scheduled',
       scheduled_for: body.scheduled_for,
     }])
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (scheduleError) return NextResponse.json({ error: scheduleError.message }, { status: 500 });
 
-  return NextResponse.json(data, { status: 201 });
+  // 2. Otomatis insert 3 row schedule_platforms (Instagram, TikTok, Twitter)
+  const platformRows = PLATFORMS.map(platform => ({
+    schedule_id:  schedule.id,
+    platform,
+    is_uploaded:  false,
+    uploaded_at:  null,
+  }));
+
+  const { error: platformError } = await supabase
+    .from('schedule_platforms')
+    .insert(platformRows);
+
+  if (platformError) return NextResponse.json({ error: platformError.message }, { status: 500 });
+
+  // 3. Return schedule + platforms
+  const { data: full } = await supabase
+    .from('schedules')
+    .select('*, schedule_platforms(*)')
+    .eq('id', schedule.id)
+    .single();
+
+  return NextResponse.json(full, { status: 201 });
 }

@@ -1,12 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-
 import Calendar      from '../../components/schedules/calendar';
 import LivePreview   from '../../components/schedules/livePreview';
 import ScheduleForm  from '../../components/schedules/scheduleForm';
 import TemplateModal from '../../components/schedules/templateModal';
-
 import {
   type FilterType,
   type Platform,
@@ -22,9 +20,8 @@ type Props = {
 };
 
 export default function SchedulePage({ initialSchedules, initialTemplates, userId }: Props) {
-  // State diinisialisasi dari data server — tidak ada dummy data
-  const [schedules, setSchedules] = useState<Schedule[]>(initialSchedules);
-  const templates = initialTemplates;
+  const [schedules, setSchedules] = useState<Schedule[]>(initialSchedules ?? []);
+  const templates = initialTemplates ?? [];
 
   // Calendar state
   const today = new Date();
@@ -43,9 +40,10 @@ export default function SchedulePage({ initialSchedules, initialTemplates, userI
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleInjectTemplate = (t: Template) => {
-    setCaption(t.content);
-    setIsModalOpen(false);
-  };
+  setTitle(t.name);      // ← isi judul dengan nama template
+  setCaption(t.content);
+  setIsModalOpen(false);
+};
 
   const handleSave = async () => {
     if (!title || !scheduledFor) {
@@ -56,7 +54,6 @@ export default function SchedulePage({ initialSchedules, initialTemplates, userI
     const body: ScheduleInsert = {
       title,
       caption,
-      platform,
       status:        'scheduled',
       scheduled_for: new Date(scheduledFor).toISOString(),
     };
@@ -73,8 +70,6 @@ export default function SchedulePage({ initialSchedules, initialTemplates, userI
     }
 
     const saved: Schedule = await res.json();
-
-    // Update state lokal dengan data dari DB (ada id asli)
     setSchedules(prev => [...prev, saved]);
 
     // Reset form
@@ -94,6 +89,7 @@ export default function SchedulePage({ initialSchedules, initialTemplates, userI
         filter={filter}
         setFilter={setFilter}
         schedules={schedules}
+        setSchedules={setSchedules}
         selected={selected}
         setSelected={setSelected}
       />

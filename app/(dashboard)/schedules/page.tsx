@@ -15,7 +15,7 @@ export default async function ScheduleRoute() {
   ] = await Promise.all([
     supabase
       .from('schedules')
-      .select('*')
+      .select('*, schedule_platforms(*)')   // ← join schedule_platforms
       .eq('user_id', user.id)
       .order('scheduled_for', { ascending: true }),
     supabase

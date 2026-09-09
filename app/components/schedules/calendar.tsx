@@ -1,6 +1,7 @@
 'use client';
 
-import { DAYS, MONTHS, PLATFORM_STYLE, STATUS_STYLE, type FilterType, type Schedule } from './types';
+import { useState } from 'react';
+import { DAYS, MONTHS, PLATFORM_STYLE, STATUS_STYLE, PLATFORMS, type FilterType, type Schedule, type SchedulePlatform } from './types';
 
 type Props = {
   cur: Date;
@@ -8,6 +9,7 @@ type Props = {
   filter: FilterType;
   setFilter: (f: FilterType) => void;
   schedules: Schedule[];
+  setSchedules: (schedules: Schedule[]) => void;
   selected: { date: string; items: Schedule[] } | null;
   setSelected: (v: { date: string; items: Schedule[] } | null) => void;
 };
@@ -19,10 +21,7 @@ const FILTERS: { label: string; value: FilterType }[] = [
   { label: 'Twitter',  value: 'Twitter' },
 ];
 
-// Ekstrak "YYYY-MM-DD" dari ISO string scheduled_for
 const toDateStr = (iso: string | null | undefined) => iso ? iso.slice(0, 10) : '';
-
-// Ekstrak "HH:MM" dari ISO string scheduled_for
 const toTimeStr = (iso: string) => {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -31,7 +30,7 @@ const toTimeStr = (iso: string) => {
 export default function Calendar({
   cur, setCur,
   filter, setFilter,
-  schedules,
+  schedules, setSchedules,
   selected, setSelected,
 }: Props) {
   const today = new Date();
@@ -39,16 +38,66 @@ export default function Calendar({
   const m = cur.getMonth();
   const firstDay    = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const [toggling, setToggling] = useState<string | null>(null);
 
   const filtered = filter === 'all'
-    ? schedules
-    : schedules.filter(s => s.platform === filter);
+    ? (schedules ?? [])
+    : (schedules ?? []).filter(s =>
+        s.schedule_platforms?.some(p => p.platform === filter)
+      );
 
   const getDateStr = (d: number) =>
     `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
   const isToday = (d: number) =>
     today.getFullYear() === y && today.getMonth() === m && today.getDate() === d;
+
+  // Toggle is_uploaded — update platform + status schedule
+  const handleToggle = async (sp: SchedulePlatform, scheduleId: string) => {
+    setToggling(sp.id);
+
+    const res = await fetch(`/api/schedules-platforms/${sp.id}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ is_uploaded: !sp.is_uploaded }),
+    });
+
+    if (!res.ok) {
+      setToggling(null);
+      return;
+    }
+
+    // Response berisi { platform, status }
+    const { platform: updatedPlatform, status: newStatus }: {
+      platform: SchedulePlatform;
+      status: string;
+    } = await res.json();
+
+    // Update schedules state — platform + status sekaligus
+    const updateSchedule = (s: Schedule): Schedule => {
+      if (s.id !== scheduleId) return s;
+      return {
+        ...s,
+        status: newStatus as Schedule['status'],
+        schedule_platforms: s.schedule_platforms?.map(p =>
+          p.id === updatedPlatform.id ? updatedPlatform : p
+        ),
+      };
+    };
+
+    const newSchedules = schedules.map(updateSchedule);
+    setSchedules(newSchedules);
+
+    // Update selected juga kalau sedang terbuka
+    if (selected) {
+      setSelected({
+        ...selected,
+        items: selected.items.map(updateSchedule),
+      });
+    }
+
+    setToggling(null);
+  };
 
   return (
     <>
@@ -106,7 +155,6 @@ export default function Calendar({
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const d       = i + 1;
             const dateStr = getDateStr(d);
-            // Cocokkan tanggal dari scheduled_for
             const dayScheds = filtered.filter(s => s.scheduled_for && toDateStr(s.scheduled_for) === dateStr);
             const col = (firstDay + i) % 7;
             return (
@@ -124,12 +172,15 @@ export default function Calendar({
                   {d}
                 </div>
                 {dayScheds.slice(0, 2).map((s, idx) => {
-                  const st = PLATFORM_STYLE[s.platform];
+                  const allUploaded = s.schedule_platforms?.every(p => p.is_uploaded);
                   return (
                     <div
                       key={idx}
-                      className="text-[9px] px-1.5 py-0.5 rounded mb-0.5 truncate"
-                      style={{ background: st.bg, color: st.tc }}
+                      className={`text-[9px] px-1.5 py-0.5 rounded mb-0.5 truncate ${
+                        allUploaded
+                          ? 'bg-emerald-900/50 text-emerald-400'
+                          : 'bg-zinc-800 text-zinc-300'
+                      }`}
                     >
                       {s.title}
                     </div>
@@ -161,31 +212,78 @@ export default function Calendar({
             </button>
           </div>
           <div className="flex flex-col divide-y divide-zinc-800">
-            {selected.items.map((s, i) => {
-              const st  = PLATFORM_STYLE[s.platform];
+            {selected.items.map((s) => {
               const sst = STATUS_STYLE[s.status];
+              const allUploaded = s.schedule_platforms?.every(p => p.is_uploaded);
               return (
-                <div key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                  <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: st.color }} />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-white">{s.title}</p>
-                    {/* Ekstrak jam dari scheduled_for */}
-                    <p className="text-xs text-zinc-500 mt-0.5">{toTimeStr(s.scheduled_for)}</p>
-                    <div className="flex gap-1.5 mt-1">
-                      <span
-                        className="text-[10px] px-2 py-0.5 rounded-full inline-block"
-                        style={{ background: st.bg, color: st.tc }}
-                      >
-                        {s.platform}
-                      </span>
-                      <span
-                        className="text-[10px] px-2 py-0.5 rounded-full inline-block"
-                        style={{ background: sst.bg, color: sst.tc }}
-                      >
-                        {sst.label}
-                      </span>
+                <div key={s.id} className="py-3 first:pt-0 last:pb-0">
+
+                  {/* Judul + waktu + status */}
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                      allUploaded ? 'bg-emerald-400' : 'bg-zinc-500'
+                    }`} />
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-white">{s.title}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">{toTimeStr(s.scheduled_for)}</p>
                     </div>
+                    <span
+                      className="text-[10px] px-2 py-0.5 rounded-full"
+                      style={{ background: sst.bg, color: sst.tc }}
+                    >
+                      {sst.label}
+                    </span>
                   </div>
+
+                  {/* Checklist platform */}
+                  <div className="flex flex-col gap-1.5 pl-5">
+                    {PLATFORMS.map(platform => {
+                      const sp = s.schedule_platforms?.find(p => p.platform === platform);
+                      if (!sp) return null;
+                      const st = PLATFORM_STYLE[platform];
+                      const isToggling = toggling === sp.id;
+                      return (
+                        <button
+                          key={platform}
+                          onClick={(e) => { e.stopPropagation(); handleToggle(sp, s.id); }}
+                          disabled={isToggling}
+                          className="flex items-center gap-2.5 w-full text-left disabled:opacity-50 transition-opacity"
+                        >
+                          {/* Checkbox */}
+                          <div
+                            className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 ${
+                              sp.is_uploaded ? 'border-transparent' : 'border-zinc-600 bg-transparent'
+                            }`}
+                            style={sp.is_uploaded ? { background: st.color } : {}}
+                          >
+                            {sp.is_uploaded && (
+                              <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                                <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </div>
+
+                          {/* Label platform */}
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full"
+                            style={{ background: st.bg, color: st.tc }}
+                          >
+                            {platform}
+                          </span>
+
+                          {/* Waktu upload */}
+                          {sp.is_uploaded && sp.uploaded_at && (
+                            <span className="text-[10px] text-zinc-500 ml-auto">
+                              {new Date(sp.uploaded_at).toLocaleTimeString('id-ID', {
+                                hour: '2-digit', minute: '2-digit'
+                              })}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
                 </div>
               );
             })}

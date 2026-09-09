@@ -5,9 +5,9 @@ import { PLATFORM_STYLE, STATUS_STYLE, MONTHS, type Platform, type ScheduleStatu
 type UpcomingSchedule = {
   id: string;
   title: string;
-  platform: Platform;
   status: ScheduleStatus;
   scheduled_for: string;
+  schedule_platforms: { platform: Platform; is_uploaded: boolean }[];
 };
 
 type Props = {
@@ -16,12 +16,11 @@ type Props = {
     terjadwal:   number;
     terbit:      number;
   };
-  platformCount:    Record<string, number>;
-  monthlyCount:     number[];   // index 0–11 = Jan–Des
+  platformCount:     Record<string, number>;
+  monthlyCount:      number[];
   upcomingSchedules: UpcomingSchedule[];
 };
 
-// Platform yang ditampilkan di bar chart platform
 const PLATFORMS: Platform[] = ['Instagram', 'TikTok', 'Twitter'];
 
 export default function DashboardPage({
@@ -37,29 +36,25 @@ export default function DashboardPage({
     { label: 'Terbit',       value: String(stats.terbit),      sub: 'sudah tayang' },
   ];
 
-  // Normalisasi bar chart bulanan ke persentase
-  const maxMonth  = Math.max(...monthlyCount, 1);
-  const barHeights = monthlyCount.map(v => Math.round((v / maxMonth) * 100));
-
-  // Normalisasi bar chart platform ke persentase
+  const maxMonth    = Math.max(...monthlyCount, 1);
+  const barHeights  = monthlyCount.map(v => Math.round((v / maxMonth) * 100));
   const maxPlatform = Math.max(...PLATFORMS.map(p => platformCount[p] ?? 0), 1);
 
-  // Format waktu dari ISO string ke label Indonesia
   const formatScheduledFor = (iso: string) => {
-    const d    = new Date(iso);
-    const now  = new Date();
+    const d        = new Date(iso);
+    const now      = new Date();
     const tomorrow = new Date(now);
     tomorrow.setDate(now.getDate() + 1);
 
     const isSameDay = (a: Date, b: Date) =>
-      a.getDate() === b.getDate() &&
-      a.getMonth() === b.getMonth() &&
+      a.getDate()     === b.getDate()  &&
+      a.getMonth()    === b.getMonth() &&
       a.getFullYear() === b.getFullYear();
 
     const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-    if (isSameDay(d, now))       return `Hari ini · ${timeStr}`;
-    if (isSameDay(d, tomorrow))  return `Besok · ${timeStr}`;
+    if (isSameDay(d, now))      return `Hari ini · ${timeStr}`;
+    if (isSameDay(d, tomorrow)) return `Besok · ${timeStr}`;
     return `${d.getDate()} ${MONTHS[d.getMonth()]} · ${timeStr}`;
   };
 
@@ -144,23 +139,39 @@ export default function DashboardPage({
         ) : (
           <div className="flex flex-col divide-y divide-zinc-800">
             {upcomingSchedules.map(s => {
-              const st  = PLATFORM_STYLE[s.platform];
               const sst = STATUS_STYLE[s.status];
               return (
                 <div key={s.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: st.color }} />
+                  <div className="w-2 h-2 rounded-full shrink-0 bg-zinc-500" />
                   <div className="flex-1">
                     <p className="text-xs font-medium text-white">{s.title}</p>
                     <p className="text-xs text-zinc-500">{formatScheduledFor(s.scheduled_for)}</p>
+                    {/* Platform badges + status upload */}
+                    <div className="flex gap-1 mt-1.5 flex-wrap">
+                      {s.schedule_platforms?.map(sp => {
+                        const st = PLATFORM_STYLE[sp.platform];
+                        return (
+                          <span
+                            key={sp.platform}
+                            className="text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-1"
+                            style={{
+                              background: sp.is_uploaded ? st.bg : '#27272a',
+                              color:      sp.is_uploaded ? st.tc : '#71717a',
+                            }}
+                          >
+                            {sp.is_uploaded && (
+                              <svg width="8" height="8" viewBox="0 0 12 12" fill="none">
+                                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                            {sp.platform}
+                          </span>
+                        );
+                      })}
+                    </div>
                   </div>
                   <span
-                    className="text-[10px] px-2 py-0.5 rounded-full"
-                    style={{ background: st.bg, color: st.tc }}
-                  >
-                    {s.platform}
-                  </span>
-                  <span
-                    className="text-[10px] px-2 py-0.5 rounded-full"
+                    className="text-[10px] px-2 py-0.5 rounded-full shrink-0"
                     style={{ background: sst.bg, color: sst.tc }}
                   >
                     {sst.label}
