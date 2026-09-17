@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import '@tabler/icons-webfont/dist/tabler-icons.css';
+import ThemeProvider from "@/app/providers/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,7 +19,8 @@ export const metadata: Metadata = {
     default: "SITEKS DUKCAPIL - Sistem Informasi Teks & Penjadwalan Konten",
     template: "%s | SITEKS DUKCAPIL",
   },
-  description: "Platform manajemen template teks dan penjadwalan konten media sosial resmi Dinas Kependudukan dan Pencatatan Sipil.",
+  description:
+    "Platform manajemen template teks dan penjadwalan konten media sosial resmi Dinas Kependudukan dan Pencatatan Sipil.",
 };
 
 export default function RootLayout({
@@ -29,9 +31,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

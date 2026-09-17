@@ -1,1 +1,191 @@
 @import "tailwindcss";
+
+/* ============================================================
+   DESIGN TOKENS — minimalis, 1 warna aksen, garis hairline
+============================================================ */
+@theme {
+  --color-bg: #f4f4f1;
+  --color-surface: #ffffff;
+  --color-ink: #111113;
+  --color-ink-soft: #3c3c43;
+  --color-muted: #75757d;
+  --color-line: #e2e2dc;
+  --color-line-strong: #cfcfc7;
+  --color-accent: #1550d8;
+  --color-accent-soft: #edf2ff;
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ============================================================
+   DARK MODE — override variable saja, semua utility (bg-bg,
+   text-ink, border-line, dst) otomatis ikut berubah tanpa
+   perlu prefix dark: di komponen manapun
+============================================================ */
+.dark {
+  --color-bg: #131316;
+  --color-surface: #1c1c20;
+  --color-ink: #f3f3f0;
+  --color-ink-soft: #c9c9cf;
+  --color-muted: #8a8a92;
+  --color-line: #2b2b30;
+  --color-line-strong: #3c3c42;
+  --color-accent: #5b8dff;
+  --color-accent-soft: #1c2540;
+}
+
+.dark .skeleton {
+  background: color-mix(in srgb, var(--color-ink) 10%, transparent);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  ::selection {
+    background: var(--color-ink);
+    color: var(--color-bg);
+  }
+  /* custom cursor hanya di perangkat dengan mouse */
+  @media (pointer: fine) {
+    body {
+      cursor: none;
+    }
+  }
+}
+
+/* ============================================================
+   STATE AWAL UNTUK SCROLL / FADE ANIMATION
+============================================================ */
+[data-reveal],
+[data-reveal-group] > * {
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal],
+  [data-reveal-group] > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ============================================================
+   UTILITAS
+============================================================ */
+.grid-lines {
+  background-image: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-ink) 6%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-ink) 6%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 72px 72px;
+}
+
+.hairline {
+  border: 1px solid var(--color-line);
+}
+
+/* label kecil mono */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* underline sweep — micro interaction link */
+.link-sweep {
+  position: relative;
+}
+.link-sweep::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  height: 1px;
+  width: 100%;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.link-sweep:hover::after,
+.link-sweep[data-active="true"]::after {
+  transform: scaleX(1);
+}
+
+/* micro interaction — tekan tombol */
+.press {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+/* ============================================================
+   SKELETON / LOADING SHIMMER
+============================================================ */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-ink) 7%, transparent);
+  border-radius: 4px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, #fff 70%, transparent),
+    transparent
+  );
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ============================================================
+   SCENE 3D
+============================================================ */
+.scene-3d {
+  perspective: 1400px;
+  perspective-origin: 50% 40%;
+}
+.layer-3d {
+  transform-style: preserve-3d;
+}
+
+/* scrollbar tipis */
+.thin-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 99px;
+}
+
