@@ -1,59 +1,60 @@
-import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
+
+const COOKIE_NAME = "siteks_session";
+
+const secret = new TextEncoder().encode(process.env.AUTH_SECRET!);
+
+async function getUserIdFromToken(token: string | undefined) {
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const { payload } = await jwtVerify(token, secret);
+
+    return typeof payload.userId === "string" ? payload.userId : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  const pathname = request.nextUrl.pathname;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+
+  const userId = await getUserIdFromToken(token);
+
+  const protectedRoutes = ["/dashboard", "/template", "/schedules"];
+
+  const isProtectedRoute = protectedRoutes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
   );
 
-  // Selalu pakai getUser() — verifikasi token ke server, bukan hanya baca cookie lokal
-  const { data: { user } } = await supabase.auth.getUser();
-  const { pathname } = request.nextUrl;
+  // Jika membuka halaman protected tanpa login
+  if (isProtectedRoute && !userId) {
+    const loginUrl = new URL("/login", request.url);
 
-  // Belum login → redirect ke /login, simpan tujuan asal di query param
-  const isProtectedRoute =
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/template') ||
-    pathname.startsWith('/schedules');
+    loginUrl.searchParams.set("redirectTo", pathname);
 
-  if (!user && isProtectedRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('redirectTo', pathname);
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // Sudah login → tidak bisa akses /login lagi
-  if (user && pathname === '/login') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+  // Jika user sudah login tetapi mencoba membuka login
+  if (pathname === "/login" && userId) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  return supabaseResponse;
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    "/dashboard/:path*",
+    "/template/:path*",
+    "/schedules/:path*",
+    "/login",
   ],
 };

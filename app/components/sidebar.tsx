@@ -1,35 +1,50 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { useState } from "react";
+
+import Link from "next/link";
+
+import { usePathname } from "next/navigation";
 
 const menuItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: 'ti-layout-dashboard' },
-  { href: '/template',  label: 'Template',  icon: 'ti-file-text' },
-  { href: '/schedules', label: 'Schedules', icon: 'ti-calendar' },
+  {
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: "ti-layout-dashboard",
+  },
+  {
+    href: "/template",
+    label: "Template",
+    icon: "ti-file-text",
+  },
+  {
+    href: "/schedules",
+    label: "Schedules",
+    icon: "ti-calendar",
+  },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
-    setIsLoggingOut(true);
-    try {
-      // 1. Sign out on client side to clear Supabase browser cookies/session
-      const supabase = createSupabaseBrowserClient();
-      await supabase.auth.signOut();
 
-      // 2. Call server route handler to clear server cookies
-      await fetch('/logout', { method: 'POST' });
+    setIsLoggingOut(true);
+
+    try {
+      // Panggil API logout untuk menghapus
+      // session cookie lokal
+      await fetch("/logout", {
+        method: "POST",
+      });
     } catch (err) {
-      console.error('Logout error:', err);
+      console.error("Logout error:", err);
     } finally {
-      // 3. Hard redirect to /login to ensure full reset of client state and cache
-      window.location.href = '/login';
+      // Redirect ke halaman login
+      window.location.href = "/login";
     }
   };
 
@@ -40,7 +55,10 @@ export default function Sidebar() {
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
           <span className="text-sm font-bold text-black">S</span>
         </div>
-        <span className="text-[15px] font-medium tracking-tight text-white">SI-TEKS</span>
+
+        <span className="text-[15px] font-medium tracking-tight text-white">
+          SI-TEKS
+        </span>
       </div>
 
       {/* Menu */}
@@ -48,19 +66,22 @@ export default function Sidebar() {
         <p className="mb-1 px-2 text-[11px] font-medium uppercase tracking-widest text-zinc-500">
           Menu
         </p>
+
         {menuItems.map((item) => {
           const isActive = pathname === item.href;
+
           return (
             <Link
               key={item.href}
               href={item.href}
               className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
                 isActive
-                  ? 'bg-zinc-800 text-white'
-                  : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'
+                  ? "bg-zinc-800 text-white"
+                  : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white"
               }`}
             >
               <i className={`ti ${item.icon} text-lg`} aria-hidden="true" />
+
               {item.label}
             </Link>
           );
@@ -73,10 +94,16 @@ export default function Sidebar() {
           type="button"
           onClick={handleLogout}
           disabled={isLoggingOut}
-          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-red-950/50 hover:text-red-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-red-950/50 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <i className={`ti ${isLoggingOut ? 'ti-loader-2 animate-spin' : 'ti-logout'} text-lg`} aria-hidden="true" />
-          {isLoggingOut ? 'Logging out...' : 'Logout'}
+          <i
+            className={`ti ${
+              isLoggingOut ? "ti-loader-2 animate-spin" : "ti-logout"
+            } text-lg`}
+            aria-hidden="true"
+          />
+
+          {isLoggingOut ? "Logging out..." : "Logout"}
         </button>
       </div>
     </aside>

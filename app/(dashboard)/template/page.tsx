@@ -1,21 +1,41 @@
-import { redirect } from 'next/navigation';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
-import TemplatePage from '@/app/components/template/TemplatePage';
-import type { Template } from '@/app/components/template/types';
+import { redirect } from "next/navigation";
+
+import { pool } from "@/lib/db";
+
+import { getSessionUserId } from "@/lib/auth";
+
+import TemplatePage from "@/app/components/template/TemplatePage";
+
+import type { Template } from "@/app/components/template/types";
 
 export default async function TemplateRoute() {
-  const supabase = await createSupabaseServerClient();
+  // Ambil user dari session lokal
+  const userId = await getSessionUserId();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  // Belum login → ke halaman login
+  if (!userId) {
+    redirect("/login");
+  }
 
-  const { data, error } = await supabase
-    .from('templates')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('name', { ascending: true });
+  // Ambil template milik user dari MySQL
+  const [rows] = await pool.execute(
+    `
+    SELECT
+      id,
+      user_id,
+      name,
+      content,
+      platform,
+      created_at,
+      updated_at
+    FROM templates
+    WHERE user_id = ?
+    ORDER BY name ASC
+    `,
+    [userId],
+  );
 
-  if (error) throw new Error(error.message);
+  const templates = rows as Template[];
 
-  return <TemplatePage userId={user.id} initialTemplates={(data ?? []) as Template[]} />;
+  return <TemplatePage userId={userId} initialTemplates={templates} />;
 }

@@ -1,84 +1,143 @@
 -- ==========================================
--- SITEKS DUKCAPIL - SUPABASE DATABASE SCHEMA
--- Jalankan query ini di Supabase SQL Editor
+-- SITEKS DUKCAPIL - MYSQL DATABASE SCHEMA
+-- ==========================================
+-- Database : simanten-new
+-- DBMS     : MySQL
+-- Digunakan melalui Laragon / phpMyAdmin
 -- ==========================================
 
--- 1. Tabel Templates
-CREATE TABLE IF NOT EXISTS public.templates (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    platform TEXT NOT NULL CHECK (platform IN ('Instagram', 'TikTok', 'Twitter')),
+CREATE DATABASE IF NOT EXISTS `simanten-new`
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+USE `simanten-new`;
+
+-- ==========================================
+-- TABLE: users
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS users (
+    id CHAR(36) NOT NULL,
+    username VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+    UNIQUE KEY users_email_unique (email)
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- ==========================================
+-- TABLE: templates
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS templates (
+    id CHAR(36) NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    name VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
 
--- 2. Tabel Schedules
-CREATE TABLE IF NOT EXISTS public.schedules (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    template_id UUID REFERENCES public.templates(id) ON DELETE SET NULL,
-    title TEXT NOT NULL,
-    caption TEXT NOT NULL DEFAULT '',
-    status TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('draft', 'scheduled', 'published')),
-    scheduled_for TIMESTAMPTZ NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
 
--- 3. Tabel Schedule Platforms (Relasi Platform per Jadwal)
-CREATE TABLE IF NOT EXISTS public.schedule_platforms (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    schedule_id UUID NOT NULL REFERENCES public.schedules(id) ON DELETE CASCADE,
-    platform TEXT NOT NULL CHECK (platform IN ('Instagram', 'TikTok', 'Twitter')),
-    is_uploaded BOOLEAN NOT NULL DEFAULT false,
-    uploaded_at TIMESTAMPTZ DEFAULT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+    platform ENUM(
+        'Instagram',
+        'TikTok',
+        'Twitter'
+    ) NOT NULL DEFAULT 'Instagram',
+
+    PRIMARY KEY (id),
+
+    CONSTRAINT templates_user_id_fkey
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
 
 -- ==========================================
--- ROW LEVEL SECURITY (RLS) POLICIES
+-- TABLE: schedules
 -- ==========================================
 
--- Enable RLS
-ALTER TABLE public.templates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.schedules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.schedule_platforms ENABLE ROW LEVEL SECURITY;
+CREATE TABLE IF NOT EXISTS schedules (
+    id CHAR(36) NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    template_id CHAR(36) NULL,
 
--- Policy untuk Templates
-CREATE POLICY "Users can manage their own templates"
-    ON public.templates
-    FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    title VARCHAR(255) NOT NULL,
+    caption TEXT NULL,
 
--- Policy untuk Schedules
-CREATE POLICY "Users can manage their own schedules"
-    ON public.schedules
-    FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    status ENUM(
+        'draft',
+        'scheduled',
+        'published'
+    ) DEFAULT 'draft',
 
--- Policy untuk Schedule Platforms
-CREATE POLICY "Users can manage their own schedule platforms"
-    ON public.schedule_platforms
-    FOR ALL
-    TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.schedules
-            WHERE schedules.id = schedule_platforms.schedule_id
-            AND schedules.user_id = auth.uid()
-        )
-    )
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM public.schedules
-            WHERE schedules.id = schedule_platforms.schedule_id
-            AND schedules.user_id = auth.uid()
-        )
-    );
+    scheduled_for DATETIME NULL,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    CONSTRAINT schedules_user_id_fkey
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT schedules_template_id_fkey
+        FOREIGN KEY (template_id)
+        REFERENCES templates(id)
+        ON DELETE SET NULL
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- ==========================================
+-- TABLE: schedule_platforms
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS schedule_platforms (
+    id CHAR(36) NOT NULL,
+    schedule_id CHAR(36) NOT NULL,
+
+    platform ENUM(
+        'Instagram',
+        'TikTok',
+        'Twitter'
+    ) NOT NULL,
+
+    is_uploaded BOOLEAN NOT NULL DEFAULT FALSE,
+    uploaded_at DATETIME NULL,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    CONSTRAINT schedule_platforms_schedule_id_fkey
+        FOREIGN KEY (schedule_id)
+        REFERENCES schedules(id)
+        ON DELETE CASCADE
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- ==========================================
+-- SELESAI
+-- ==========================================
