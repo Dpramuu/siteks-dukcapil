@@ -164,6 +164,7 @@ export default function TemplatePage({ initialTemplates }: Props) {
       {/* Modal form create/edit */}
       {isFormOpen && (
         <TemplateFormModal
+          key={editTarget?.id ?? 'new'}
           initial={editTarget}
           onSave={handleSave}
           onClose={() => { setIsFormOpen(false); setEditTarget(null); }}

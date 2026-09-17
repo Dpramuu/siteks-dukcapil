@@ -1,6 +1,15 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import DashboardPage from '@/app/components/schedules/DashboardPage';
+import type { Platform, ScheduleStatus } from '@/app/components/schedules/types';
+
+interface DashboardSchedule {
+  id: string;
+  title: string;
+  status: ScheduleStatus;
+  scheduled_for: string;
+  schedule_platforms: { platform: Platform; is_uploaded: boolean }[];
+}
 
 export default async function DashboardRoute() {
   const supabase = await createSupabaseServerClient();
@@ -16,7 +25,7 @@ export default async function DashboardRoute() {
 
   if (errSchedules) throw new Error(errSchedules.message);
 
-  const allSchedules = schedules ?? [];
+  const allSchedules = (schedules ?? []) as DashboardSchedule[];
 
   // Hitung stats
   const totalKonten = allSchedules.length;
@@ -28,7 +37,7 @@ export default async function DashboardRoute() {
   for (const s of allSchedules) {
     const platforms = s.schedule_platforms ?? [];
     // Hindari duplikat — hitung schedule sekali per platform
-    const unique = new Set(platforms.map((p: { platform: string }) => p.platform));
+    const unique = new Set(platforms.map(p => p.platform));
     for (const p of unique) {
       platformCount[p] = (platformCount[p] ?? 0) + 1;
     }
@@ -36,7 +45,7 @@ export default async function DashboardRoute() {
 
   // Hitung aktivitas per bulan tahun berjalan
   const currentYear  = new Date().getFullYear();
-  const monthlyCount = Array(12).fill(0);
+  const monthlyCount: number[] = Array(12).fill(0);
   for (const s of allSchedules) {
     const d = new Date(s.scheduled_for);
     if (d.getFullYear() === currentYear) {
@@ -58,4 +67,4 @@ export default async function DashboardRoute() {
       upcomingSchedules={upcomingSchedules}
     />
   );
-}
+}

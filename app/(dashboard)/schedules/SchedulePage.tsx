@@ -16,10 +16,10 @@ import {
 type Props = {
   initialSchedules: Schedule[];
   initialTemplates: Template[];
-  userId: string;
+  userId?: string;
 };
 
-export default function SchedulePage({ initialSchedules, initialTemplates, userId }: Props) {
+export default function SchedulePage({ initialSchedules, initialTemplates }: Props) {
   const [schedules, setSchedules] = useState<Schedule[]>(initialSchedules ?? []);
   const templates = initialTemplates ?? [];
 
@@ -36,14 +36,49 @@ export default function SchedulePage({ initialSchedules, initialTemplates, userI
   const [caption, setCaption]           = useState('');
   const [successMsg, setSuccessMsg]     = useState(false);
 
+  // Preview state dari klik tanggal/jadwal kalender
+  const [calendarPreviewSchedule, setCalendarPreviewSchedule] = useState<Schedule | null>(null);
+
+  // Saat user mengetik di form, otomatis beralih preview ke form
+  const handleTitleChange = (val: string) => {
+    setTitle(val);
+    if (calendarPreviewSchedule) setCalendarPreviewSchedule(null);
+  };
+
+  const handleCaptionChange = (val: string) => {
+    setCaption(val);
+    if (calendarPreviewSchedule) setCalendarPreviewSchedule(null);
+  };
+
+  const handlePlatformChange = (val: Platform) => {
+    setPlatform(val);
+  };
+
+  const handleLoadIntoForm = (s: Schedule) => {
+    setTitle(s.title);
+    setCaption(s.caption);
+    if (s.scheduled_for) {
+      const d = new Date(s.scheduled_for);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const localIso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      setScheduledFor(localIso);
+    }
+    if (s.schedule_platforms?.[0]?.platform) {
+      setPlatform(s.schedule_platforms[0].platform);
+    }
+    setCalendarPreviewSchedule(null);
+  };
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleInjectTemplate = (t: Template) => {
-  setTitle(t.name);      // ← isi judul dengan nama template
-  setCaption(t.content);
-  setIsModalOpen(false);
-};
+    setTitle(t.name);
+    setCaption(t.content);
+    if (t.platform) setPlatform(t.platform);
+    setCalendarPreviewSchedule(null);
+    setIsModalOpen(false);
+  };
 
   const handleSave = async () => {
     if (!title || !scheduledFor) {
@@ -76,6 +111,7 @@ export default function SchedulePage({ initialSchedules, initialTemplates, userI
     setTitle('');
     setScheduledFor('');
     setCaption('');
+    setCalendarPreviewSchedule(null);
     setSuccessMsg(true);
     setTimeout(() => setSuccessMsg(false), 3000);
   };
@@ -91,21 +127,35 @@ export default function SchedulePage({ initialSchedules, initialTemplates, userI
         schedules={schedules}
         setSchedules={setSchedules}
         selected={selected}
-        setSelected={setSelected}
+        setSelected={(v) => {
+          setSelected(v);
+          if (!v) setCalendarPreviewSchedule(null);
+        }}
+        previewScheduleId={calendarPreviewSchedule?.id}
+        onSelectPreviewSchedule={(s) => setCalendarPreviewSchedule(s)}
+        onLoadIntoForm={handleLoadIntoForm}
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         <ScheduleForm
-          title={title}               setTitle={setTitle}
-          platform={platform}         setPlatform={setPlatform}
+          title={title}               setTitle={handleTitleChange}
+          platform={platform}         setPlatform={handlePlatformChange}
           scheduledFor={scheduledFor} setScheduledFor={setScheduledFor}
-          caption={caption}           setCaption={setCaption}
+          caption={caption}           setCaption={handleCaptionChange}
           successMsg={successMsg}
           onSave={handleSave}
           onOpenTemplates={() => setIsModalOpen(true)}
         />
 
-        <LivePreview platform={platform} caption={caption} />
+        <LivePreview
+          platform={platform}
+          setPlatform={handlePlatformChange}
+          title={calendarPreviewSchedule ? calendarPreviewSchedule.title : title}
+          caption={calendarPreviewSchedule ? calendarPreviewSchedule.caption : caption}
+          previewSource={calendarPreviewSchedule ? 'calendar' : 'form'}
+          scheduleTitle={calendarPreviewSchedule?.title}
+          onResetToForm={() => setCalendarPreviewSchedule(null)}
+        />
       </div>
 
       {isModalOpen && (

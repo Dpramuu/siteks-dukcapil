@@ -54,7 +54,7 @@ export default function LoginPage() {
           <div className="w-14 h-14 bg-blue-600/20 border border-blue-500/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
             <Bolt className="text-blue-400 w-6 h-6" aria-hidden="true" />
           </div>
-          <h1 className="text-2xl font-medium text-white tracking-tight">SI-TEKS</h1>
+          <h1 className="text-2xl font-medium text-white tracking-tight">SI-MANTEN</h1>
           <p className="text-sm text-zinc-500 mt-2 max-w-xs mx-auto leading-relaxed">
             Platform penjadwalan konten media sosial serba bisa
           </p>
@@ -97,7 +97,7 @@ export default function LoginPage() {
           </div>
 
           <h2 className="text-xl font-medium text-white mb-1">Selamat datang</h2>
-          <p className="text-sm text-zinc-500 mb-6">Masuk ke akun SI-TEKS kamu</p>
+          <p className="text-sm text-zinc-500 mb-6">Masuk ke akun SI-MANTEN kamu</p>
 
           {error && (
             <div className="mb-4 rounded-lg bg-red-950/50 border border-red-900 px-3 py-2.5 text-sm text-red-400">

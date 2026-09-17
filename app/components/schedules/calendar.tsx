@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Eye, Edit3 } from 'lucide-react';
 import { DAYS, MONTHS, PLATFORM_STYLE, STATUS_STYLE, PLATFORMS, type FilterType, type Schedule, type SchedulePlatform } from './types';
 
 type Props = {
@@ -12,6 +13,9 @@ type Props = {
   setSchedules: (schedules: Schedule[]) => void;
   selected: { date: string; items: Schedule[] } | null;
   setSelected: (v: { date: string; items: Schedule[] } | null) => void;
+  previewScheduleId?: string | null;
+  onSelectPreviewSchedule?: (s: Schedule) => void;
+  onLoadIntoForm?: (s: Schedule) => void;
 };
 
 const FILTERS: { label: string; value: FilterType }[] = [
@@ -32,6 +36,9 @@ export default function Calendar({
   filter, setFilter,
   schedules, setSchedules,
   selected, setSelected,
+  previewScheduleId,
+  onSelectPreviewSchedule,
+  onLoadIntoForm,
 }: Props) {
   const today = new Date();
   const y = cur.getFullYear();
@@ -160,11 +167,16 @@ export default function Calendar({
             return (
               <div
                 key={d}
-                onClick={() => dayScheds.length && setSelected({ date: dateStr, items: dayScheds })}
+                onClick={() => {
+                  if (dayScheds.length) {
+                    setSelected({ date: dateStr, items: dayScheds });
+                    onSelectPreviewSchedule?.(dayScheds[0]);
+                  }
+                }}
                 className={`min-h-16 p-1.5 border-b border-zinc-800 transition-colors
                   ${col < 6 ? 'border-r border-zinc-800' : ''}
                   ${dayScheds.length ? 'cursor-pointer hover:bg-zinc-800/50' : 'cursor-default'}
-                  ${selected?.date === dateStr ? 'bg-zinc-800/50' : ''}
+                  ${selected?.date === dateStr ? 'bg-zinc-800/60 ring-1 ring-inset ring-blue-500/40' : ''}
                 `}
               >
                 <div className={`w-5 h-5 flex items-center justify-center text-xs mb-1 rounded-full
@@ -173,13 +185,16 @@ export default function Calendar({
                 </div>
                 {dayScheds.slice(0, 2).map((s, idx) => {
                   const allUploaded = s.schedule_platforms?.every(p => p.is_uploaded);
+                  const isPreviewing = previewScheduleId === s.id;
                   return (
                     <div
                       key={idx}
-                      className={`text-[9px] px-1.5 py-0.5 rounded mb-0.5 truncate ${
-                        allUploaded
-                          ? 'bg-emerald-900/50 text-emerald-400'
-                          : 'bg-zinc-800 text-zinc-300'
+                      className={`text-[9px] px-1.5 py-0.5 rounded mb-0.5 truncate transition-all ${
+                        isPreviewing
+                          ? 'bg-blue-600 text-white font-medium ring-1 ring-white/30'
+                          : allUploaded
+                            ? 'bg-emerald-900/50 text-emerald-400'
+                            : 'bg-zinc-800 text-zinc-300'
                       }`}
                     >
                       {s.title}
@@ -215,24 +230,56 @@ export default function Calendar({
             {selected.items.map((s) => {
               const sst = STATUS_STYLE[s.status];
               const allUploaded = s.schedule_platforms?.every(p => p.is_uploaded);
+              const isPreviewing = previewScheduleId === s.id;
               return (
                 <div key={s.id} className="py-3 first:pt-0 last:pb-0">
 
-                  {/* Judul + waktu + status */}
+                  {/* Judul + waktu + aksi preview & status */}
                   <div className="flex items-start gap-3 mb-3">
                     <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
                       allUploaded ? 'bg-emerald-400' : 'bg-zinc-500'
                     }`} />
-                    <div className="flex-1">
-                      <p className="text-xs font-medium text-white">{s.title}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-white truncate">{s.title}</p>
                       <p className="text-xs text-zinc-500 mt-0.5">{toTimeStr(s.scheduled_for)}</p>
                     </div>
-                    <span
-                      className="text-[10px] px-2 py-0.5 rounded-full"
-                      style={{ background: sst.bg, color: sst.tc }}
-                    >
-                      {sst.label}
-                    </span>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {onSelectPreviewSchedule && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onSelectPreviewSchedule(s); }}
+                          className={`px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 transition-all ${
+                            isPreviewing
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700'
+                          }`}
+                          title="Tampilkan pratinjau jadwal ini di Live Preview"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          {isPreviewing ? 'Pratinjau Aktif' : 'Pratinjau'}
+                        </button>
+                      )}
+
+                      {onLoadIntoForm && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onLoadIntoForm(s); }}
+                          className="px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-all"
+                          title="Muat isi jadwal ini ke form"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          Salin ke Form
+                        </button>
+                      )}
+
+                      <span
+                        className="text-[10px] px-2 py-0.5 rounded-full"
+                        style={{ background: sst.bg, color: sst.tc }}
+                      >
+                        {sst.label}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Checklist platform */}

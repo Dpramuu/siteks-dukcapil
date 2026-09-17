@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: 'ti-layout-dashboard' },
@@ -11,12 +13,24 @@ const menuItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const router   = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    await fetch('/(auth)/logout', { method: 'POST' });
-    router.refresh(); // refresh supaya layout server re-fetch session
-    router.push('/login');
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      // 1. Sign out on client side to clear Supabase browser cookies/session
+      const supabase = createSupabaseBrowserClient();
+      await supabase.auth.signOut();
+
+      // 2. Call server route handler to clear server cookies
+      await fetch('/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      // 3. Hard redirect to /login to ensure full reset of client state and cache
+      window.location.href = '/login';
+    }
   };
 
   return (
@@ -56,11 +70,13 @@ export default function Sidebar() {
       {/* Bottom */}
       <div className="border-t border-zinc-800 p-3">
         <button
+          type="button"
           onClick={handleLogout}
-          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-red-950/50 hover:text-red-400"
+          disabled={isLoggingOut}
+          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-red-950/50 hover:text-red-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <i className="ti ti-logout text-lg" aria-hidden="true" />
-          Logout
+          <i className={`ti ${isLoggingOut ? 'ti-loader-2 animate-spin' : 'ti-logout'} text-lg`} aria-hidden="true" />
+          {isLoggingOut ? 'Logging out...' : 'Logout'}
         </button>
       </div>
     </aside>
