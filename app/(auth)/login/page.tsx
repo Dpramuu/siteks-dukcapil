@@ -1,60 +1,77 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
-import { Bolt, CalendarClock, LayoutTemplate, BarChart3 } from 'lucide-react';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Bolt, CalendarClock, LayoutTemplate, BarChart3 } from "lucide-react";
 
 export default function LoginPage() {
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
     setLoading(true);
     setError(null);
 
-    const supabase = createSupabaseBrowserClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
 
-    if (authError) {
-      if (authError.message === 'Invalid login credentials') {
-        setError('Email atau password salah. Coba lagi.');
-      } else if (authError.message.includes('Email not confirmed')) {
-        setError('Email belum dikonfirmasi. Cek inbox kamu.');
-      } else {
-        setError(authError.message);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Email atau password salah.");
+        setLoading(false);
+        return;
       }
-      setLoading(false);
-      return;
-    }
 
-    const params = new URLSearchParams(window.location.search);
-    const redirectTo = params.get('redirectTo') ?? '/dashboard';
-    router.push(redirectTo);
-    router.refresh();
+      const params = new URLSearchParams(window.location.search);
+      const redirectTo = params.get("redirectTo") ?? "/dashboard";
+
+      router.push(redirectTo);
+      router.refresh();
+    } catch (error) {
+      console.error("LOGIN ERROR:", error);
+
+      setError(
+        "Tidak dapat terhubung ke server. Pastikan aplikasi sedang berjalan.",
+      );
+
+      setLoading(false);
+    }
   };
 
   return (
     <div className="flex min-h-screen bg-zinc-950">
-
       {/* Kiri — Visual */}
       <div className="hidden lg:flex w-[45%] bg-zinc-900 border-r border-zinc-800 flex-col items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute w-96 h-96 rounded-full border border-zinc-800 -top-20 -left-20" />
+
         <div className="absolute w-80 h-80 rounded-full border border-zinc-800 -bottom-16 -right-16" />
 
         <div className="relative z-10 text-center mb-10">
           <div className="w-14 h-14 bg-blue-600/20 border border-blue-500/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
             <Bolt className="text-blue-400 w-6 h-6" aria-hidden="true" />
           </div>
-          <h1 className="text-2xl font-medium text-white tracking-tight">SI-MANTEN</h1>
+
+          <h1 className="text-2xl font-medium text-white tracking-tight">
+            SI-MANTEN
+          </h1>
+
           <p className="text-sm text-zinc-500 mt-2 max-w-xs mx-auto leading-relaxed">
             Platform penjadwalan konten media sosial serba bisa
           </p>
@@ -62,18 +79,39 @@ export default function LoginPage() {
 
         <div className="relative z-10 flex flex-col gap-3 w-full max-w-xs">
           {[
-            { icon: CalendarClock,  title: 'Jadwal Konten',       sub: 'Atur posting otomatis setiap hari' },
-            { icon: LayoutTemplate, title: 'Template Caption',    sub: 'Hemat waktu dengan template siap pakai' },
-            { icon: BarChart3,      title: 'Dashboard Analitik',  sub: 'Pantau performa konten kamu' },
+            {
+              icon: CalendarClock,
+              title: "Jadwal Konten",
+              sub: "Atur posting otomatis setiap hari",
+            },
+            {
+              icon: LayoutTemplate,
+              title: "Template Caption",
+              sub: "Hemat waktu dengan template siap pakai",
+            },
+            {
+              icon: BarChart3,
+              title: "Dashboard Analitik",
+              sub: "Pantau performa konten kamu",
+            },
           ].map((f) => {
             const IconComponent = f.icon;
+
             return (
-              <div key={f.title} className="flex items-center gap-3 bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-3">
+              <div
+                key={f.title}
+                className="flex items-center gap-3 bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-3"
+              >
                 <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center shrink-0">
-                  <IconComponent className="text-blue-400 w-4 h-4" aria-hidden="true" />
+                  <IconComponent
+                    className="text-blue-400 w-4 h-4"
+                    aria-hidden="true"
+                  />
                 </div>
+
                 <div>
                   <p className="text-sm font-medium text-white">{f.title}</p>
+
                   <p className="text-xs text-zinc-500 mt-0.5">{f.sub}</p>
                 </div>
               </div>
@@ -85,56 +123,92 @@ export default function LoginPage() {
       {/* Kanan — Form */}
       <div className="flex-1 flex items-center justify-center px-6">
         <div className="w-full max-w-sm">
-
           {/* Tab switcher */}
           <div className="flex bg-zinc-900 border border-zinc-800 rounded-xl p-1 mb-8">
             <span className="flex-1 text-center py-2 text-sm font-medium text-white bg-zinc-700 rounded-lg">
               Masuk
             </span>
-            <Link href="/register" className="flex-1 text-center py-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors rounded-lg">
+
+            <Link
+              href="/register"
+              className="flex-1 text-center py-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors rounded-lg"
+            >
               Daftar
             </Link>
           </div>
 
-          <h2 className="text-xl font-medium text-white mb-1">Selamat datang</h2>
-          <p className="text-sm text-zinc-500 mb-6">Masuk ke akun SI-MANTEN kamu</p>
+          <h2 className="text-xl font-medium text-white mb-1">
+            Selamat datang
+          </h2>
 
+          <p className="text-sm text-zinc-500 mb-6">
+            Masuk ke akun SI-MANTEN kamu
+          </p>
+
+          {/* Error */}
           {error && (
             <div className="mb-4 rounded-lg bg-red-950/50 border border-red-900 px-3 py-2.5 text-sm text-red-400">
               {error}
             </div>
           )}
 
+          {/* Form */}
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            {/* Email */}
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5">Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+                Email
+              </label>
+
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
                 className="w-full px-3 py-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-white placeholder-zinc-600 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                placeholder="nama@email.com" />
+                placeholder="nama@email.com"
+              />
             </div>
 
+            {/* Password */}
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5">Password</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+                Password
+              </label>
+
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
                 className="w-full px-3 py-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-white placeholder-zinc-600 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                placeholder="••••••••" />
+                placeholder="••••••••"
+              />
             </div>
 
-            <button type="submit" disabled={loading}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 mt-1">
-              {loading ? 'Memproses...' : 'Masuk'}
+            {/* Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 mt-1"
+            >
+              {loading ? "Memproses..." : "Masuk"}
             </button>
           </form>
 
           <p className="text-center text-sm text-zinc-500 mt-5">
-            Belum punya akun?{' '}
-            <Link href="/register" className="text-blue-400 font-medium hover:text-blue-300 transition-colors">
+            Belum punya akun?{" "}
+            <Link
+              href="/register"
+              className="text-blue-400 font-medium hover:text-blue-300 transition-colors"
+            >
               Daftar sekarang
             </Link>
           </p>
         </div>
       </div>
-
     </div>
   );
 }

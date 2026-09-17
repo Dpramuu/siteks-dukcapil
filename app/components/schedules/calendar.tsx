@@ -25,10 +25,32 @@ const FILTERS: { label: string; value: FilterType }[] = [
   { label: 'Twitter',  value: 'Twitter' },
 ];
 
-const toDateStr = (iso: string | null | undefined) => iso ? iso.slice(0, 10) : '';
-const toTimeStr = (iso: string) => {
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+const toDateStr = (value: string | Date | null | undefined) => {
+  if (!value) return "";
+
+  if (value instanceof Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
+
+  return String(value).slice(0, 10);
+};
+
+const toTimeStr = (value: string | Date | null | undefined): string => {
+  if (!value) return "";
+
+  const d = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+
+  return `${String(d.getHours()).padStart(2, "0")}:${String(
+    d.getMinutes(),
+  ).padStart(2, "0")}`;
 };
 
 export default function Calendar({

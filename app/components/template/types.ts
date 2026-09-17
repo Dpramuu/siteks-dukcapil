@@ -39,7 +39,7 @@
 //   { label: 'Twitter',  value: 'Twitter' },
 // ];
 
-// // ── Dummy data (ganti dengan fetch Supabase) ──
+// ── Dummy data ──
 // export const DUMMY_SCHEDULES: Schedule[] = [
 //   { date:'2026-05-01', title:'Promo Mei',        platform:'Instagram', time:'10:00', caption:'Promo spesial bulan Mei! #promo #sale' },
 //   { date:'2026-05-05', title:'Tutorial produk',   platform:'TikTok',    time:'15:00', caption:'Tutorial lengkap produk terbaru' },
@@ -72,7 +72,7 @@ export type Schedule = {
   caption: string;
   platform: Platform;
   status: ScheduleStatus;
-  scheduled_for: string;   // ISO string dari Supabase timestamptz
+  scheduled_for: string; // Format tanggal/waktu dari MySQL
   created_at: string;
   updated_at: string;
 };

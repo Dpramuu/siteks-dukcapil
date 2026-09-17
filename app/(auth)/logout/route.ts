@@ -1,8 +1,24 @@
-import { NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { NextResponse } from "next/server";
+
+import { destroySession } from "@/lib/auth";
 
 export async function POST() {
-  const supabase = await createSupabaseServerClient();
-  await supabase.auth.signOut();
-  return NextResponse.json({ success: true });
+  try {
+    await destroySession();
+
+    return NextResponse.json({
+      success: true,
+      message: "Logout berhasil",
+    });
+  } catch (error) {
+    console.error("LOGOUT ERROR:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Gagal melakukan logout",
+      },
+      { status: 500 },
+    );
+  }
 }
