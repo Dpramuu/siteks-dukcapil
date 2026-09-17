@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Template, Platform } from './types';
 
 type Props = {
@@ -8,17 +8,9 @@ type Props = {
 };
 
 export default function TemplateFormModal({ initial, onSave, onClose }: Props) {
-  const [name, setName]         = useState('');
-  const [platform, setPlatform] = useState<Platform>('Instagram');
-  const [content, setContent]   = useState('');
-
-  useEffect(() => {
-    if (initial) {
-      setName(initial.name);
-      setPlatform(initial.platform);
-      setContent(initial.content);
-    }
-  }, [initial]);
+  const [name, setName]         = useState(initial?.name ?? '');
+  const [platform, setPlatform] = useState<Platform>(initial?.platform ?? 'Instagram');
+  const [content, setContent]   = useState(initial?.content ?? '');
 
   const handleSave = () => {
     if (!name.trim() || !content.trim()) {
