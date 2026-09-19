@@ -71,6 +71,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const imageUrl = (body as any).image_url;
+    if (imageUrl !== undefined && imageUrl !== null) {
+      if (typeof imageUrl !== "string") {
+        return NextResponse.json(
+          { error: "image_url harus berupa string" },
+          { status: 400 },
+        );
+      }
+      if (imageUrl.length > 500) {
+        return NextResponse.json(
+          { error: "image_url maksimal 500 karakter" },
+          { status: 400 },
+        );
+      }
+    }
+
     // =====================================================
     // 4. Konversi scheduled_for ke format MySQL
     // =====================================================
@@ -95,10 +111,11 @@ export async function POST(request: NextRequest) {
         template_id,
         title,
         caption,
+        image_url,
         status,
         scheduled_for
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         scheduleId,
@@ -106,6 +123,7 @@ export async function POST(request: NextRequest) {
         body.template_id ?? null,
         body.title.trim(),
         body.caption?.trim() || null,
+        imageUrl ?? null,
         body.status ?? "scheduled",
         scheduledFor,
       ],
@@ -143,6 +161,7 @@ export async function POST(request: NextRequest) {
         template_id,
         title,
         caption,
+        image_url,
         status,
         scheduled_for,
         created_at,

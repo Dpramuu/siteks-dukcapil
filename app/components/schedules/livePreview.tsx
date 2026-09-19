@@ -23,6 +23,7 @@ type Props = {
   previewSource?: 'form' | 'calendar';
   scheduleTitle?: string;
   onResetToForm?: () => void;
+  photoPreview?: string | null;
 };
 
 export default function LivePreview({
@@ -33,6 +34,7 @@ export default function LivePreview({
   previewSource = 'form',
   scheduleTitle,
   onResetToForm,
+  photoPreview,
 }: Props) {
   const displayText = caption.trim() || title.trim();
   const hasContent = Boolean(displayText);
@@ -117,14 +119,20 @@ export default function LivePreview({
               </div>
 
               {/* Media Container */}
-              <div className="w-full aspect-square bg-gradient-to-br from-zinc-900 to-zinc-950 flex flex-col items-center justify-center relative p-6 text-center border-y border-zinc-900">
-                <div className="w-14 h-14 rounded-2xl bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center mb-3 shadow-inner">
-                  <ImageIcon className="w-7 h-7 text-zinc-500" />
-                </div>
-                {title ? (
-                  <p className="text-sm font-semibold text-zinc-200 line-clamp-2 max-w-[85%]">{title}</p>
+              <div className={`w-full aspect-square bg-gradient-to-br from-zinc-900 to-zinc-950 flex flex-col items-center justify-center relative text-center border-y border-zinc-900 overflow-hidden ${photoPreview ? 'p-0' : 'p-6'}`}>
+                {photoPreview ? (
+                  <img src={photoPreview} alt="Preview Instagram" className="w-full h-full object-cover" />
                 ) : (
-                  <p className="text-xs text-zinc-500">Area Visual Konten</p>
+                  <>
+                    <div className="w-14 h-14 rounded-2xl bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center mb-3 shadow-inner">
+                      <ImageIcon className="w-7 h-7 text-zinc-500" />
+                    </div>
+                    {title ? (
+                      <p className="text-sm font-semibold text-zinc-200 line-clamp-2 max-w-[85%]">{title}</p>
+                    ) : (
+                      <p className="text-xs text-zinc-500">Area Visual Konten</p>
+                    )}
+                  </>
                 )}
                 <span className="absolute bottom-2.5 right-2.5 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-zinc-400 font-mono">
                   1/1
@@ -196,9 +204,15 @@ export default function LivePreview({
                   </div>
 
                   {/* Attachment Box Placeholder */}
-                  <div className="mt-3 w-full h-36 rounded-xl border border-zinc-800 bg-zinc-900/60 flex flex-col items-center justify-center text-zinc-500 text-xs">
-                    <ImageIcon className="w-6 h-6 mb-1 text-zinc-600" />
-                    <span>Media lampiran postingan</span>
+                  <div className={`mt-3 w-full h-36 rounded-xl border border-zinc-800 bg-zinc-900/60 flex flex-col items-center justify-center text-zinc-500 text-xs overflow-hidden`}>
+                    {photoPreview ? (
+                      <img src={photoPreview} alt="Preview Twitter" className="w-full h-full object-cover" />
+                    ) : (
+                      <>
+                        <ImageIcon className="w-6 h-6 mb-1 text-zinc-600" />
+                        <span>Media lampiran postingan</span>
+                      </>
+                    )}
                   </div>
 
                   {/* Tweet Interactions */}
@@ -235,11 +249,17 @@ export default function LivePreview({
           {platform === 'TikTok' && (
             <div className="bg-zinc-950 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl relative aspect-[9/14] flex flex-col justify-between p-3.5 select-none">
               {/* Background Video Simulation */}
-              <div className="absolute inset-0 bg-gradient-to-b from-zinc-900 via-black to-zinc-950 flex flex-col items-center justify-center -z-0">
-                <div className="w-16 h-16 rounded-full bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center text-zinc-500 mb-2">
-                  <Music2 className="w-8 h-8 text-zinc-400 animate-pulse" />
-                </div>
-                <p className="text-[11px] text-zinc-500">Pratinjau Video TikTok (9:16)</p>
+              <div className="absolute inset-0 bg-gradient-to-b from-zinc-900 via-black to-zinc-950 flex flex-col items-center justify-center -z-0 overflow-hidden">
+                {photoPreview ? (
+                  <img src={photoPreview} alt="Preview TikTok" className="absolute inset-0 w-full h-full object-cover opacity-80" />
+                ) : (
+                  <>
+                    <div className="w-16 h-16 rounded-full bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center text-zinc-500 mb-2">
+                      <Music2 className="w-8 h-8 text-zinc-400 animate-pulse" />
+                    </div>
+                    <p className="text-[11px] text-zinc-500">Pratinjau Video TikTok (9:16)</p>
+                  </>
+                )}
               </div>
 
               {/* Top Navigation */}
