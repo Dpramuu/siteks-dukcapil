@@ -38,6 +38,8 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
 
   // Preview state dari klik tanggal/jadwal kalender
   const [calendarPreviewSchedule, setCalendarPreviewSchedule] = useState<Schedule | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   // Saat user mengetik di form, otomatis beralih preview ke form
   const handleTitleChange = (val: string) => {
@@ -86,11 +88,43 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
       return;
     }
 
-    const body: ScheduleInsert = {
+    let imageUrl = null;
+
+    if (photoFile) {
+      const formData = new FormData();
+      formData.append("file", photoFile);
+
+      try {
+        const uploadRes = await fetch("/api/uploads/schedule", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          alert('Gagal mengupload foto. Coba lagi.');
+          return;
+        }
+
+        const uploadData = await uploadRes.json();
+        if (!uploadData.success) {
+          alert(uploadData.error || 'Gagal mengupload foto.');
+          return;
+        }
+
+        imageUrl = uploadData.url;
+      } catch (err) {
+        console.error(err);
+        alert('Terjadi kesalahan saat mengupload foto.');
+        return;
+      }
+    }
+
+    const body: ScheduleInsert & { image_url?: string | null } = {
       title,
       caption,
       status:        'scheduled',
       scheduled_for: new Date(scheduledFor).toISOString(),
+      image_url:     imageUrl,
     };
 
     const res = await fetch('/api/schedules', {
@@ -111,6 +145,7 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
     setTitle('');
     setScheduledFor('');
     setCaption('');
+    setPhotoFile(null);
     setCalendarPreviewSchedule(null);
     setSuccessMsg(true);
     setTimeout(() => setSuccessMsg(false), 3000);
@@ -145,6 +180,8 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
           successMsg={successMsg}
           onSave={handleSave}
           onOpenTemplates={() => setIsModalOpen(true)}
+          onPhotoPreviewChange={setPhotoPreview}
+          onPhotoFileChange={setPhotoFile}
         />
 
         <LivePreview
@@ -155,6 +192,7 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
           previewSource={calendarPreviewSchedule ? 'calendar' : 'form'}
           scheduleTitle={calendarPreviewSchedule?.title}
           onResetToForm={() => setCalendarPreviewSchedule(null)}
+          photoPreview={photoPreview}
         />
       </div>
 
