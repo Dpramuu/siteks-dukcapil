@@ -4,46 +4,36 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
-  ArrowUpRight,
   CalendarClock,
   ChevronDown,
   Eye,
   Layers,
   LayoutTemplate,
   ListChecks,
-  Menu,
   ShieldCheck,
-  X,
 } from 'lucide-react';
 
-import { gsap, prefersReducedMotion } from '@/lib/gsap';
+import { gsap, ScrollTrigger, prefersReducedMotion } from '@/lib/gsap';
 import Reveal from '@/app/components/ui/Reveal';
-import Counter from '@/app/components/ui/Counter';
 import Modal from '@/app/components/ui/Modal';
 import Magnetic from '@/app/components/ui/Magnetic';
 import CustomCursor from '@/app/components/ui/CustomCursor';
-import ThemeToggle from '@/app/components/ui/ThemeToggle';
-import Hero3DMockup from '@/app/components/landing/Hero3DMockup';
-import WorkflowCarousel from '@/app/components/landing/WorkflowCarousel';
+import HeroZoom from '@/app/components/landing/HeroZoom';
+import PillarsPinned from '@/app/components/landing/PillarsPinned';
+import WorkflowPath from '@/app/components/landing/WorkflowPath';
 import SmoothScroll from '@/app/components/layout/SmoothScroll';
+import Navbar from '@/app/components/layout/Navbar';
+import FeatureMarquee from '@/app/components/landing/FeatureMarquee';
 
 /* ------------------------------------------------------------------ data */
-
-const NAV = [
-  { href: '#beranda', label: 'Beranda' },
-  { href: '#tentang', label: 'Tentang' },
-  { href: '#fitur', label: 'Fitur' },
-  { href: '#alur', label: 'Alur' },
-  { href: '#faq', label: 'FAQ' },
-];
 
 const FEATURES = [
   {
     icon: LayoutTemplate,
     title: 'Katalog template teks',
-    desc: 'Narasi baku KTP-el, KIA, IKD, akta, hingga surat pindah tersimpan rapi dan siap dipakai ulang.',
+    desc: 'Narasi baku promo, pengumuman, artikel, hingga siaran pers tersimpan rapi dan siap dipakai ulang.',
     detail: [
-      'Kelompokkan template berdasarkan jenis layanan.',
+      'Kelompokkan template berdasarkan jenis konten.',
       'Revisi satu kali, berlaku untuk seluruh jadwal berikutnya.',
       'Menjaga istilah dan syarat layanan tetap seragam.',
     ],
@@ -61,7 +51,7 @@ const FEATURES = [
   {
     icon: Layers,
     title: 'Multi kanal',
-    desc: 'Satu naskah dapat diarahkan ke beberapa kanal media sosial resmi dinas sekaligus.',
+    desc: 'Satu naskah dapat diarahkan ke beberapa kanal media sosial bisnis Anda sekaligus.',
     detail: [
       'Pilih kanal tujuan per jadwal.',
       'Panjang teks disesuaikan karakter tiap kanal.',
@@ -91,53 +81,35 @@ const FEATURES = [
   {
     icon: ShieldCheck,
     title: 'Akses terkontrol',
-    desc: 'Hanya akun petugas resmi yang dapat menyusun dan mengubah jadwal publikasi dinas.',
+    desc: 'Hanya anggota tim yang berwenang yang dapat menyusun dan mengubah jadwal publikasi.',
     detail: [
-      'Autentikasi akun dinas.',
+      'Autentikasi akun tim.',
       'Sesi berakhir otomatis saat tidak aktif.',
       'Data jadwal terpisah dari akses publik.',
     ],
   },
 ];
 
-const PILLARS = [
-  {
-    no: '01',
-    title: 'Konsistensi pesan',
-    desc: 'Satu sumber naskah untuk seluruh kanal, sehingga syarat dan prosedur layanan tidak lagi berbeda antar unggahan.',
-  },
-  {
-    no: '02',
-    title: 'Kepastian waktu',
-    desc: 'Kalender redaksi tersusun lebih awal. Pengumuman penting tidak lagi bergantung pada ingatan petugas.',
-  },
-  {
-    no: '03',
-    title: 'Jangkauan warga',
-    desc: 'Naskah disesuaikan karakter tiap kanal agar informasi layanan terbaca oleh kelompok usia yang berbeda.',
-  },
-];
-
 const FAQS = [
   {
-    q: 'Apa itu SITEKS Dukcapil?',
-    a: 'Sistem Informasi Teks & Penjadwalan Konten: aplikasi internal untuk menyusun template naskah layanan administrasi kependudukan dan menjadwalkan publikasinya secara terstruktur.',
+    q: 'Apa itu SIMANTEN?',
+    a: 'Sistem Informasi Manajemen Konten: platform untuk menyusun template naskah konten dan menjadwalkan publikasinya ke berbagai kanal media sosial secara terstruktur.',
   },
   {
-    q: 'Siapa yang menggunakan sistem ini?',
-    a: 'Tim Hubungan Masyarakat, administrator media sosial, dan petugas pelayanan yang berwenang mengelola publikasi informasi layanan adminduk.',
+    q: 'Siapa yang cocok memakai SIMANTEN?',
+    a: 'Bisnis, agensi, dan tim di organisasi mana pun yang perlu mengelola banyak konten media sosial secara konsisten dan terjadwal — mulai dari tim satu orang sampai tim besar dengan beberapa penanggung jawab.',
   },
   {
     q: 'Kanal apa saja yang didukung?',
-    a: 'Sistem mendukung pengelolaan naskah dan jadwal untuk beberapa kanal media sosial resmi dinas, dengan penyesuaian panjang teks pada masing-masing kanal.',
+    a: 'Sistem mendukung pengelolaan naskah dan jadwal untuk beberapa kanal media sosial sekaligus, dengan penyesuaian panjang teks pada masing-masing kanal.',
   },
   {
-    q: 'Bagaimana cara masuk ke sistem?',
-    a: 'Gunakan tombol Masuk pada halaman ini, lalu isi email dinas dan kata sandi yang telah terdaftar oleh administrator.',
+    q: 'Apakah SIMANTEN berbayar?',
+    a: 'Tidak. SIMANTEN dapat digunakan secara gratis. Cukup masuk lewat tombol Masuk dan Anda langsung bisa menyusun template serta menjadwalkan konten.',
   },
   {
     q: 'Bisakah menjadwalkan pengumuman mendesak?',
-    a: 'Bisa. Jadwal dapat dibuat untuk penayangan segera maupun direncanakan beberapa minggu sebelumnya, termasuk pengumuman layanan keliling atau pemeliharaan sistem.',
+    a: 'Bisa. Jadwal dapat dibuat untuk penayangan segera maupun direncanakan beberapa minggu sebelumnya, termasuk promo kilat atau pemberitahuan pemeliharaan sistem.',
   },
 ];
 
@@ -146,40 +118,70 @@ const FAQS = [
 function Faq({
   q,
   a,
+  index,
   open,
   onToggle,
 }: {
   q: string;
   a: string;
+  index: number;
   open: boolean;
   onToggle: () => void;
 }) {
   const bodyRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLParagraphElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = bodyRef.current;
-    if (!el) return;
+    const inner = innerRef.current;
+    const bar = barRef.current;
+    if (!el || !inner || !bar) return;
+
     if (prefersReducedMotion()) {
       gsap.set(el, { height: open ? 'auto' : 0, opacity: open ? 1 : 0 });
+      gsap.set(bar, { scaleY: open ? 1 : 0 });
       return;
     }
-    gsap.to(el, {
+
+    const tl = gsap.timeline();
+    tl.to(el, {
       height: open ? 'auto' : 0,
       opacity: open ? 1 : 0,
       duration: 0.55,
       ease: 'expo.out',
-    });
+    })
+      .to(bar, { scaleY: open ? 1 : 0, duration: 0.4, ease: 'power2.out' }, '<')
+      .fromTo(
+        inner,
+        { y: open ? 10 : 0, opacity: open ? 0 : 1 },
+        { y: 0, opacity: open ? 1 : 0, duration: 0.4, ease: 'power2.out' },
+        '<0.1',
+      );
+
+    return () => {
+      tl.kill();
+    };
   }, [open]);
 
   return (
-    <div className="border-b border-line">
+    <div className="relative border-b border-line">
+      <div
+        ref={barRef}
+        className="absolute left-0 top-0 h-full w-[2px] origin-top scale-y-0 bg-accent"
+      />
       <button
         type="button"
         onClick={onToggle}
-        className="group flex w-full items-center justify-between gap-6 py-6 text-left"
+        className="group flex w-full items-center justify-between gap-6 py-6 pl-5 text-left"
       >
-        <span className="text-base font-medium tracking-tight transition-colors group-hover:text-accent sm:text-lg">
-          {q}
+        <span className="flex items-baseline gap-4">
+          <span className="text-xs tabular-nums text-muted">
+            {String(index + 1).padStart(2, '0')}
+          </span>
+          <span className="text-base font-medium tracking-tight transition-colors group-hover:text-accent sm:text-lg">
+            {q}
+          </span>
         </span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-muted transition-transform duration-500 ${
@@ -187,8 +189,10 @@ function Faq({
           }`}
         />
       </button>
-      <div ref={bodyRef} className="h-0 overflow-hidden opacity-0">
-        <p className="max-w-2xl pb-6 text-sm leading-relaxed text-muted">{a}</p>
+      <div ref={bodyRef} className="h-0 overflow-hidden pl-5 opacity-0">
+        <p ref={innerRef} className="max-w-2xl pb-6 text-sm leading-relaxed text-muted">
+          {a}
+        </p>
       </div>
     </div>
   );
@@ -197,278 +201,64 @@ function Faq({
 /* --------------------------------------------------------------- halaman */
 
 export default function LandingPage() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [activeFeature, setActiveFeature] = useState<number | null>(null);
+  // modalOpen & featureIndex dipisah: saat modal menutup, isinya harus tetap ada
+  // sampai animasi tutup selesai (kalau tidak, teks hilang duluan sebelum panel menghilang)
+  const [modalOpen, setModalOpen] = useState(false);
+  const [featureIndex, setFeatureIndex] = useState(0);
+  const [originRect, setOriginRect] = useState<DOMRect | null>(null);
 
-  const progressRef = useRef<HTMLDivElement>(null);
-  const heroTextRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const fiturRef = useRef<HTMLDivElement>(null);
 
-  /* indikator progres scroll + parallax judul hero */
+  /* fitur: scroll berhenti sejenak di section ini sebelum lanjut ke alur */
   useEffect(() => {
-    if (prefersReducedMotion()) return;
+    const el = fiturRef.current;
+    if (!el || prefersReducedMotion()) return;
 
     const ctx = gsap.context(() => {
-      if (progressRef.current) {
-        gsap.fromTo(
-          progressRef.current,
-          { scaleX: 0 },
-          {
-            scaleX: 1,
-            ease: 'none',
-            transformOrigin: 'left center',
-            scrollTrigger: { start: 0, end: () => document.body.scrollHeight, scrub: 0.3 },
-          },
-        );
-      }
-
-      if (heroTextRef.current) {
-        /* fade in + slide berurutan saat halaman dibuka */
-        gsap.fromTo(
-          heroTextRef.current.querySelectorAll('[data-hero-item]'),
-          { opacity: 0, y: 30 },
-          { opacity: 1, y: 0, duration: 1.1, stagger: 0.12, ease: 'expo.out' },
-        );
-
-        /* parallax halus saat scroll */
-        gsap.to(heroTextRef.current, {
-          yPercent: 12,
-          opacity: 0.35,
-          ease: 'none',
-          scrollTrigger: {
-            trigger: heroTextRef.current,
-            start: 'top top+=120',
-            end: 'bottom top',
-            scrub: true,
-          },
-        });
-      }
+      ScrollTrigger.create({
+        trigger: el,
+        start: 'top top',
+        end: '+=60%', // jarak "tahan" tambahan — makin besar makin lama berhentinya
+        pin: true,
+        pinSpacing: true,
+      });
     });
 
     return () => ctx.revert();
   }, []);
 
-  /* animasi menu mobile */
-  useEffect(() => {
-    const el = menuRef.current;
-    if (!el) return;
-    if (menuOpen) {
-      gsap.fromTo(
-        el,
-        { height: 0, opacity: 0 },
-        { height: 'auto', opacity: 1, duration: 0.5, ease: 'expo.out' },
-      );
-      gsap.fromTo(
-        el.querySelectorAll('[data-menu-item]'),
-        { opacity: 0, x: -14 },
-        { opacity: 1, x: 0, duration: 0.45, stagger: 0.05, delay: 0.1 },
-      );
-    } else {
-      gsap.to(el, { height: 0, opacity: 0, duration: 0.35, ease: 'power2.inOut' });
-    }
-  }, [menuOpen]);
+  const feature = FEATURES[featureIndex];
+  const FeatureIcon = feature.icon;
 
-  const feature = activeFeature !== null ? FEATURES[activeFeature] : null;
+  const openFeature = (index: number, rect: DOMRect) => {
+    setFeatureIndex(index);
+    setOriginRect(rect);
+    setModalOpen(true);
+  };
+  const closeFeature = () => setModalOpen(false);
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-bg font-sans text-ink">
       <CustomCursor />
 
       {/* ============================= NAVBAR ============================= */}
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-line bg-bg/85 backdrop-blur-md">
-        <div
-          ref={progressRef}
-          className="absolute bottom-0 left-0 h-px w-full origin-left scale-x-0 bg-accent"
-        />
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-          <Link href="/" className="flex items-baseline gap-2">
-            <span className="text-sm font-semibold tracking-[0.18em] uppercase">Siteks</span>
-            <span className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
-              Dukcapil
-            </span>
-          </Link>
+      <Navbar />
 
-          <nav className="hidden items-center gap-9 md:flex">
-            {NAV.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="link-sweep text-[13px] text-muted transition-colors hover:text-ink"
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
+      <SmoothScroll>
+        {/* ======================= HERO (laptop zoom) + TENTANG ======================= */}
+        <HeroZoom />
 
-          <div className="hidden items-center gap-3 md:flex">
-            <ThemeToggle />
-            <Magnetic strength={0.2}>
-              <Link
-                href="/login"
-                className="press group inline-flex items-center gap-2 rounded-full border border-ink bg-ink px-5 py-2.5 text-[13px] font-medium text-bg hover:border-accent hover:bg-accent"
-              >
-                Masuk
-                <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
-              </Link>
-            </Magnetic>
-          </div>
-
-          <div className="flex items-center gap-2 md:hidden">
-            <ThemeToggle />
-            <Link
-              href="/login"
-              className="press rounded-full border border-ink bg-ink px-4 py-2 text-xs font-medium text-bg"
-            >
-              Masuk
-            </Link>
-            <button
-              type="button"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-label="Menu"
-              className="press flex h-9 w-9 items-center justify-center rounded-full border border-line"
-            >
-              {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
-
-        {/* menu mobile — slide */}
-        <div ref={menuRef} className="h-0 overflow-hidden border-t border-line md:hidden">
-          <div className="space-y-1 px-5 py-4">
-            {NAV.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                data-menu-item
-                onClick={() => setMenuOpen(false)}
-                className="block py-2 text-sm text-ink-soft"
-              >
-                {item.label}
-              </a>
-            ))}
-          </div>
-        </div>
-      </header>
-
-      <SmoothScroll className="pt-16">
-        {/* ============================== HERO ============================== */}
-        <section id="beranda" className="relative scroll-mt-16">
-          <div className="pointer-events-none absolute inset-0 grid-lines opacity-60" aria-hidden />
-          <div className="relative mx-auto max-w-6xl px-5 pt-16 pb-20 sm:px-8 sm:pt-24 sm:pb-28">
-            <div className="grid items-center gap-16 lg:grid-cols-12 lg:gap-10">
-              {/* teks */}
-              <div ref={heroTextRef} className="lg:col-span-6">
-                <p data-hero-item className="eyebrow">
-                  Sistem Informasi Internal
-                </p>
-
-                <h1
-                  data-hero-item
-                  className="mt-6 text-4xl leading-[1.05] font-semibold tracking-tight sm:text-5xl lg:text-6xl"
-                >
-                  Naskah layanan,
-                  <br />
-                  <span className="text-muted">terjadwal rapi.</span>
-                </h1>
-
-                <p data-hero-item className="mt-7 max-w-md text-[15px] leading-relaxed text-muted">
-                  SITEKS membantu tim Dukcapil menyusun template naskah layanan administrasi
-                  kependudukan, memeriksanya, lalu menjadwalkan publikasi ke kanal resmi dinas
-                  dalam satu alur kerja.
-                </p>
-
-                <div data-hero-item className="mt-10 flex flex-wrap items-center gap-3">
-                  <Magnetic strength={0.18}>
-                    <Link
-                      href="/login"
-                      className="press group inline-flex items-center gap-2.5 rounded-full border border-ink bg-ink px-7 py-3.5 text-sm font-medium text-bg hover:border-accent hover:bg-accent"
-                    >
-                      Masuk ke sistem
-                      <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                    </Link>
-                  </Magnetic>
-                  
-                  <a
-                    href="#tentang"
-                    className="press inline-flex items-center gap-2 rounded-full border border-line px-6 py-3.5 text-sm text-ink-soft hover:border-ink hover:text-ink"
-                  >
-                    Pelajari dulu
-                    <ChevronDown className="h-4 w-4" />
-                  </a>
-                </div>
-
-                <div
-                  data-hero-item
-                  className="mt-14 grid max-w-md grid-cols-3 gap-6 border-t border-line pt-7"
-                >
-                  <div>
-                    <p className="text-2xl font-semibold tracking-tight">
-                      <Counter to={24} suffix="+" />
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted">Template naskah</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-semibold tracking-tight">
-                      <Counter to={3} />
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted">Kanal terpadu</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-semibold tracking-tight">
-                      <Counter to={1} />
-                      <span className="text-muted"> layar</span>
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted">Kalender kerja</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* mockup 3D */}
-              <div className="lg:col-span-6">
-                <Hero3DMockup />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ============================= TENTANG ============================= */}
-        <section id="tentang" className="scroll-mt-16 border-t border-line bg-surface">
-          <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8">
-            <Reveal className="max-w-2xl">
-              <p className="eyebrow">Tentang</p>
-              <h2 className="mt-5 text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
-                Informasi layanan yang seragam, tepat waktu, dan mudah ditelusuri.
-              </h2>
-              <p className="mt-6 text-[15px] leading-relaxed text-muted">
-                Warga membutuhkan kepastian mengenai syarat dan prosedur pengurusan dokumen
-                kependudukan. SITEKS memastikan setiap naskah yang dipublikasikan berasal dari
-                sumber yang sama dan tayang sesuai rencana.
-              </p>
-            </Reveal>
-
-            <Reveal
-              stagger={0.12}
-              className="mt-20 grid gap-px overflow-hidden border border-line md:grid-cols-3"
-            >
-              {PILLARS.map((p) => (
-                <div
-                  key={p.no}
-                  className="group bg-surface p-8 transition-colors duration-500 hover:bg-bg"
-                >
-                  <span className="font-mono text-xs tracking-widest text-muted">{p.no}</span>
-                  <h3 className="mt-8 text-lg font-medium tracking-tight">{p.title}</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-muted">{p.desc}</p>
-                  <span className="mt-8 block h-px w-8 bg-line-strong transition-all duration-500 group-hover:w-20 group-hover:bg-accent" />
-                </div>
-              ))}
-            </Reveal>
-          </div>
-        </section>
+        {/* pilar Tentang — panel bertumpuk, warna selang-seling gelap/terang */}
+        <PillarsPinned />
 
         {/* ============================== FITUR ============================== */}
-        <section id="fitur" className="scroll-mt-16 border-t border-line">
-          <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8">
+        <section
+          id="fitur"
+          ref={fiturRef}
+          className="flex min-h-screen scroll-mt-16 items-center border-t border-line"
+        >
+          <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8">
             <Reveal className="flex flex-wrap items-end justify-between gap-6">
               <div className="max-w-xl">
                 <p className="eyebrow">Fitur</p>
@@ -476,33 +266,10 @@ export default function LandingPage() {
                   Enam hal yang dipakai setiap hari.
                 </h2>
               </div>
-              <p className="max-w-xs text-sm text-muted">
-                Pilih salah satu kartu untuk melihat rinciannya.
-              </p>
             </Reveal>
 
-            <Reveal
-              stagger={0.08}
-              className="mt-16 grid gap-px border border-line sm:grid-cols-2 lg:grid-cols-3"
-            >
-              {FEATURES.map((f, i) => {
-                const Icon = f.icon;
-                return (
-                  <button
-                    key={f.title}
-                    type="button"
-                    onClick={() => setActiveFeature(i)}
-                    className="group relative bg-bg p-8 text-left transition-colors duration-500 hover:bg-surface"
-                  >
-                    <div className="flex items-start justify-between">
-                      <Icon className="h-5 w-5 text-ink transition-transform duration-500 group-hover:-translate-y-0.5" />
-                      <ArrowUpRight className="h-4 w-4 text-line-strong transition-all duration-500 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent" />
-                    </div>
-                    <h3 className="mt-10 text-base font-medium tracking-tight">{f.title}</h3>
-                    <p className="mt-2.5 text-sm leading-relaxed text-muted">{f.desc}</p>
-                  </button>
-                );
-              })}
+            <Reveal y={40} className="mt-10">
+              <FeatureMarquee features={FEATURES} onSelect={openFeature} />
             </Reveal>
           </div>
         </section>
@@ -517,9 +284,9 @@ export default function LandingPage() {
               </h2>
             </Reveal>
 
-            <Reveal y={40} className="mt-14">
-              <WorkflowCarousel />
-            </Reveal>
+            <div className="mt-16">
+              <WorkflowPath />
+            </div>
           </div>
         </section>
 
@@ -533,38 +300,45 @@ export default function LandingPage() {
               </h2>
             </Reveal>
 
-            <Reveal y={34} className="lg:col-span-8">
-              <div className="border-t border-line">
-                {FAQS.map((f, i) => (
-                  <Faq
-                    key={f.q}
-                    q={f.q}
-                    a={f.a}
-                    open={openFaq === i}
-                    onToggle={() => setOpenFaq(openFaq === i ? null : i)}
-                  />
-                ))}
-              </div>
+            <Reveal y={34} stagger={0.08} className="border-t border-line lg:col-span-8">
+              {FAQS.map((f, i) => (
+                <Faq
+                  key={f.q}
+                  q={f.q}
+                  a={f.a}
+                  index={i}
+                  open={openFaq === i}
+                  onToggle={() => setOpenFaq(openFaq === i ? null : i)}
+                />
+              ))}
             </Reveal>
           </div>
         </section>
 
         {/* ================================ CTA ================================ */}
-        <section className="border-t border-line bg-ink text-bg">
+        <section data-cursor-invert className="border-t border-line bg-ink text-bg">
           <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8">
             <Reveal className="flex flex-col items-start justify-between gap-10 lg:flex-row lg:items-end">
-              <h2 className="max-w-xl text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
-                Mulai susun kalender konten layanan hari ini.
-              </h2>
-              <Magnetic strength={0.2}>
-                <Link
-                  href="/login"
-                  className="press group inline-flex items-center gap-2.5 rounded-full bg-bg px-7 py-3.5 text-sm font-medium text-ink hover:bg-accent hover:text-bg"
-                >
-                  Masuk ke dashboard
-                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                </Link>
-              </Magnetic>
+              <div className="max-w-xl">
+                <p className="eyebrow text-bg/50">Mulai sekarang</p>
+                <h2 className="mt-5 text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">
+                  Kelola konten bisnis Anda, gratis.
+                </h2>
+                <p className="mt-4 max-w-md text-sm leading-relaxed text-bg/70">
+                  Buat akun dalam hitungan menit dan mulai susun kalender konten pertama Anda hari ini.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <Magnetic strength={0.2}>
+                  <Link
+                    href="/login"
+                    className="press group inline-flex items-center gap-2.5 rounded-full bg-bg px-7 py-3.5 text-sm font-medium text-ink hover:bg-accent hover:text-bg"
+                  >
+                    Masuk
+                    <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                  </Link>
+                </Magnetic>
+              </div>
             </Reveal>
           </div>
         </section>
@@ -574,27 +348,28 @@ export default function LandingPage() {
           <div className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-10 text-xs text-muted sm:flex-row sm:items-center sm:justify-between sm:px-8">
             <div className="flex items-baseline gap-2">
               <span className="text-[13px] font-semibold tracking-[0.18em] text-ink uppercase">
-                Siteks
+                Simanten
               </span>
-              <span className="font-mono text-[10px] tracking-[0.2em] uppercase">Dukcapil</span>
             </div>
 
-            <p>© {new Date().getFullYear()} Dinas Kependudukan dan Pencatatan Sipil.</p>
+            <p>© {new Date().getFullYear()} SIMANTEN — Sistem Informasi Manajemen Konten.</p>
           </div>
         </footer>
       </SmoothScroll>
 
       {/* ============================ MODAL FITUR ============================ */}
       <Modal
-        open={activeFeature !== null}
-        onClose={() => setActiveFeature(null)}
+        open={modalOpen}
+        onClose={closeFeature}
         eyebrow="Fitur"
-        title={feature?.title}
+        title={feature.title}
+        icon={<FeatureIcon className="h-5 w-5" />}
+        originRect={originRect}
       >
-        <p>{feature?.desc}</p>
-        <ul className="mt-5 space-y-3">
-          {feature?.detail.map((d) => (
-            <li key={d} className="flex gap-3 text-sm text-muted">
+        <p data-modal-item>{feature.desc}</p>
+        <ul className="mt-6 space-y-3 border-t border-line pt-6">
+          {feature.detail.map((d) => (
+            <li key={d} data-modal-item className="flex gap-3 text-sm text-muted">
               <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent" />
               {d}
             </li>

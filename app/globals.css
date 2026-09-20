@@ -14,6 +14,10 @@
   --color-accent: #1550d8;
   --color-accent-soft: #edf2ff;
 
+  /* hero oranye (sama di mode terang & gelap) */
+  --color-hero: #ff6b2f;
+  --color-hero-ink: #16130f;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -131,6 +135,10 @@
 .link-sweep[data-active="true"]::after {
   transform: scaleX(1);
 }
+.link-sweep[data-active="true"] {
+  color: var(--color-ink);
+  font-weight: 600;
+}
 
 /* micro interaction — tekan tombol */
 .press {
@@ -180,6 +188,27 @@
   transform-style: preserve-3d;
 }
 
+/* ============================================================
+   HERO
+============================================================ */
+/* huruf judul hero: Fraunces hitam, sumbu SOFT & WONK menyala */
+.display-type {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 900;
+  font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
+}
+
+/* butiran halus di atas warna oranye */
+.hero-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.16;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 /* scrollbar tipis */
 .thin-scroll::-webkit-scrollbar {
   width: 4px;
@@ -189,3 +218,247 @@
   border-radius: 99px;
 }
 
+/* ============================================================
+   FITUR — kartu carousel (state .is-active di-toggle oleh GSAP)
+============================================================ */
+.feature-card .feature-surface {
+  /* kartu samping sedikit redup; jadi lebih terang saat di-hover / aktif */
+  background-color: color-mix(in srgb, var(--color-surface) 55%, var(--color-bg));
+  transition: background-color 0.4s ease, border-color 0.5s ease, box-shadow 0.6s ease;
+}
+.feature-card:hover .feature-surface,
+.feature-card.is-active .feature-surface {
+  background-color: var(--color-surface);
+}
+.feature-card:hover .feature-surface {
+  border-color: var(--color-line-strong);
+}
+.feature-card .feature-glow {
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+.feature-card .feature-cta {
+  color: var(--color-ink-soft);
+  transition: color 0.4s ease;
+}
+.feature-card .feature-cta-arrow {
+  transition: background-color 0.4s ease, border-color 0.4s ease, color 0.4s ease;
+}
+.feature-card .feature-cta-arrow svg {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.feature-card.is-active .feature-surface,
+.feature-card.is-active:hover .feature-surface {
+  border-color: color-mix(in srgb, var(--color-ink) 45%, var(--color-line));
+  /* bayangan hitam merata di sekeliling kartu, tanpa offset ke bawah */
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-ink) 10%, transparent),
+    0 0 44px -14px rgba(0, 0, 0, 0.35);
+}
+.feature-card.is-active .feature-glow {
+  opacity: 1;
+}
+.feature-card.is-active .feature-cta {
+  color: var(--color-accent);
+}
+.feature-card.is-active .feature-cta-arrow {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+.feature-card:hover .feature-cta-arrow svg {
+  transform: translate(2px, -2px);
+}
+
+
+/* ============================================================
+   ALUR KERJA — jalur SVG + titik (state .is-reached / .is-current
+   di-toggle oleh GSAP di WorkflowPath.tsx)
+   Mobile: rel vertikal di kiri. Desktop (lg): rel meliuk di tengah, kartu kiri-kanan.
+============================================================ */
+/* satu tempat untuk ganti warna alur: var(--color-ink) = hitam (putih di mode gelap),
+   var(--color-accent) = biru */
+.flow-root {
+  --flow-color: var(--color-ink);
+}
+.flow-route {
+  stroke: var(--flow-color);
+}
+
+.flow-card {
+  flex: 1;
+  opacity: 0; /* state awal animasi masuk */
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-card {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+.flow-step {
+  --node: 22px;
+  --node-y: 21px; /* sejajar dengan nomor di kartu */
+  --rail: 0px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding-left: 3rem;
+}
+
+/* penanda titik */
+.flow-node {
+  position: absolute;
+  z-index: 1;
+  top: var(--node-y);
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: var(--node);
+  height: var(--node);
+  border-radius: 9999px;
+  border: 1.5px solid var(--color-line-strong);
+  background: var(--color-surface);
+  transition: border-color 0.5s ease;
+}
+.flow-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--flow-color);
+  transform: scale(0);
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.flow-ping {
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--flow-color);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* garis putus penghubung titik → kartu */
+.flow-stem {
+  position: absolute;
+  top: calc(var(--node-y) + var(--node) / 2);
+  left: var(--node);
+  width: calc(3rem - var(--node));
+  border-top: 1px dashed var(--color-line-strong);
+  transition: border-color 0.5s ease;
+}
+
+/* kartu */
+.flow-surface {
+  height: 100%;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid var(--color-line);
+  background-color: var(--color-surface);
+  opacity: 0.6;
+  transition: opacity 0.5s ease, border-color 0.5s ease, box-shadow 0.6s ease,
+    translate 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.flow-surface:hover {
+  opacity: 1;
+  translate: 0 -6px;
+  border-color: var(--color-ink);
+}
+.flow-index {
+  transition: color 0.5s ease;
+}
+.flow-rule {
+  transition: width 0.5s ease, background-color 0.5s ease;
+}
+.flow-surface:hover .flow-rule {
+  width: 4rem;
+  background-color: var(--flow-color);
+}
+
+/* sudah dilewati penanda */
+.flow-step.is-reached .flow-node,
+.flow-step.is-reached .flow-stem {
+  border-color: var(--flow-color);
+}
+.flow-step.is-reached .flow-dot {
+  transform: scale(1);
+}
+.flow-step.is-reached .flow-index {
+  color: var(--flow-color);
+}
+.flow-step.is-reached .flow-surface {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--color-ink) 22%, var(--color-line));
+}
+.flow-step.is-reached .flow-rule {
+  background-color: var(--flow-color);
+}
+
+/* titik yang sedang aktif — gaya sama dengan kartu fitur */
+.flow-step.is-current .flow-surface,
+.flow-step.is-current .flow-surface:hover {
+  border-color: color-mix(in srgb, var(--color-ink) 45%, var(--color-line));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-ink) 10%, transparent),
+    0 0 44px -14px rgba(0, 0, 0, 0.35);
+}
+
+/* penanda yang berjalan di jalur */
+.flow-traveler {
+  width: 14px;
+  height: 14px;
+}
+.flow-traveler-core {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: var(--flow-color);
+  box-shadow:
+    0 0 0 3px var(--color-surface),
+    0 0 0 4.5px var(--flow-color);
+}
+.flow-traveler-halo {
+  position: absolute;
+  inset: -9px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--flow-color) 18%, transparent);
+}
+
+@media (min-width: 1024px) {
+  /* desktop: rel di tengah, kartu selang-seling kiri / kanan, tetap mengalir dari atas ke bawah */
+  .flow-step {
+    --gap: 5.5rem; /* jarak tepi kartu ke garis tengah */
+    --shift: 36px; /* titik digeser ke arah kartunya → jalur meliuk kiri-kanan */
+    flex-direction: row;
+    padding-left: 0;
+  }
+  .flow-step:nth-child(odd) {
+    padding-right: calc(50% + var(--gap));
+    justify-content: flex-end;
+  }
+  .flow-step:nth-child(even) {
+    padding-left: calc(50% + var(--gap));
+    justify-content: flex-start;
+  }
+  .flow-card {
+    flex: 0 1 26rem;
+  }
+
+  .flow-step:nth-child(odd) .flow-node {
+    left: calc(50% - var(--shift) - var(--node) / 2);
+  }
+  .flow-step:nth-child(even) .flow-node {
+    left: calc(50% + var(--shift) - var(--node) / 2);
+  }
+
+  /* garis putus dari titik ke tepi kartu */
+  .flow-stem {
+    width: calc(var(--gap) - var(--shift) - var(--node) / 2);
+  }
+  .flow-step:nth-child(odd) .flow-stem {
+    left: calc(50% - var(--gap));
+  }
+  .flow-step:nth-child(even) .flow-stem {
+    left: calc(50% + var(--shift) + var(--node) / 2);
+  }
+}

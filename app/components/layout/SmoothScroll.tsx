@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { ScrollSmoother, ScrollTrigger, prefersReducedMotion } from '@/lib/gsap';
 
 export default function SmoothScroll({
@@ -12,7 +12,8 @@ export default function SmoothScroll({
 }) {
   const created = useRef(false);
 
-  useEffect(() => {
+  /* useLayoutEffect: smoother harus ada sebelum ScrollTrigger (pin) milik anak dibuat */
+  useLayoutEffect(() => {
     if (prefersReducedMotion()) return;
 
     // cegah instance ganda saat React Strict Mode / hot reload
