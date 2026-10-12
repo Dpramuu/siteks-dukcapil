@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Eye, Edit3 } from 'lucide-react';
+import { Eye, Edit3, Trash2 } from 'lucide-react';
 import { DAYS, MONTHS, PLATFORM_STYLE, STATUS_STYLE, PLATFORMS, type FilterType, type Schedule, type SchedulePlatform } from './types';
 
 type Props = {
@@ -16,6 +16,7 @@ type Props = {
   previewScheduleId?: string | null;
   onSelectPreviewSchedule?: (s: Schedule) => void;
   onLoadIntoForm?: (s: Schedule) => void;
+  onDeleteSchedule?: (id: string) => void;
 };
 
 const FILTERS: { label: string; value: FilterType }[] = [
@@ -61,6 +62,7 @@ export default function Calendar({
   previewScheduleId,
   onSelectPreviewSchedule,
   onLoadIntoForm,
+  onDeleteSchedule,
 }: Props) {
   const today = new Date();
   const y = cur.getFullYear();
@@ -68,6 +70,39 @@ export default function Calendar({
   const firstDay    = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   const [toggling, setToggling] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus schedule ini?")) return;
+
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/schedules/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        alert("Gagal menghapus schedule");
+        return;
+      }
+
+      onDeleteSchedule?.(id);
+      
+      if (selected) {
+        const newItems = selected.items.filter(item => item.id !== id);
+        if (newItems.length === 0) {
+          setSelected(null);
+        } else {
+          setSelected({ ...selected, items: newItems });
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Terjadi kesalahan saat menghapus");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const filtered = filter === 'all'
     ? (schedules ?? [])
@@ -294,6 +329,17 @@ export default function Calendar({
                           Salin ke Form
                         </button>
                       )}
+
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}
+                        disabled={deletingId === s.id}
+                        className="px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 bg-red-900/30 text-red-400 hover:text-white hover:bg-red-600 transition-all disabled:opacity-50"
+                        title="Hapus Jadwal"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {deletingId === s.id ? 'Menghapus...' : 'Hapus'}
+                      </button>
 
                       <span
                         className="text-[10px] px-2 py-0.5 rounded-full"

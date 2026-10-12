@@ -169,6 +169,12 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
         previewScheduleId={calendarPreviewSchedule?.id}
         onSelectPreviewSchedule={(s) => setCalendarPreviewSchedule(s)}
         onLoadIntoForm={handleLoadIntoForm}
+        onDeleteSchedule={(id) => {
+          setSchedules(prev => prev.filter(s => s.id !== id));
+          if (calendarPreviewSchedule?.id === id) {
+            setCalendarPreviewSchedule(null);
+          }
+        }}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
