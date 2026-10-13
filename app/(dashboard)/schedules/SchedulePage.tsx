@@ -38,6 +38,7 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
 
   // Preview state dari klik tanggal/jadwal kalender
   const [calendarPreviewSchedule, setCalendarPreviewSchedule] = useState<Schedule | null>(null);
+  const [previewPlatform, setPreviewPlatform] = useState<Platform>('Instagram');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
@@ -54,6 +55,7 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
 
   const handlePlatformChange = (val: Platform) => {
     setPlatform(val);
+    setPreviewPlatform(val);
   };
 
   const handleLoadIntoForm = (s: Schedule) => {
@@ -67,6 +69,7 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
     }
     if (s.schedule_platforms?.[0]?.platform) {
       setPlatform(s.schedule_platforms[0].platform);
+      setPreviewPlatform(s.schedule_platforms[0].platform);
     }
     setCalendarPreviewSchedule(null);
   };
@@ -77,7 +80,10 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
   const handleInjectTemplate = (t: Template) => {
     setTitle(t.name);
     setCaption(t.content);
-    if (t.platform) setPlatform(t.platform);
+    if (t.platform) {
+      setPlatform(t.platform);
+      setPreviewPlatform(t.platform);
+    }
     setCalendarPreviewSchedule(null);
     setIsModalOpen(false);
   };
@@ -167,7 +173,12 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
           if (!v) setCalendarPreviewSchedule(null);
         }}
         previewScheduleId={calendarPreviewSchedule?.id}
-        onSelectPreviewSchedule={(s) => setCalendarPreviewSchedule(s)}
+        onSelectPreviewSchedule={(s) => {
+          setCalendarPreviewSchedule(s);
+          if (s.schedule_platforms?.[0]?.platform) {
+            setPreviewPlatform(s.schedule_platforms[0].platform);
+          }
+        }}
         onLoadIntoForm={handleLoadIntoForm}
         onDeleteSchedule={(id) => {
           setSchedules(prev => prev.filter(s => s.id !== id));
@@ -191,14 +202,14 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
         />
 
         <LivePreview
-          platform={platform}
-          setPlatform={handlePlatformChange}
+          platform={previewPlatform}
+          setPlatform={setPreviewPlatform}
           title={calendarPreviewSchedule ? calendarPreviewSchedule.title : title}
           caption={calendarPreviewSchedule ? calendarPreviewSchedule.caption : caption}
           previewSource={calendarPreviewSchedule ? 'calendar' : 'form'}
           scheduleTitle={calendarPreviewSchedule?.title}
           onResetToForm={() => setCalendarPreviewSchedule(null)}
-          photoPreview={photoPreview}
+          photoPreview={calendarPreviewSchedule ? calendarPreviewSchedule.image_url : photoPreview}
         />
       </div>
 

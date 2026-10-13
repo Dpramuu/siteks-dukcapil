@@ -27,6 +27,7 @@ export type Schedule = {
 
   title: string;
   caption: string;
+  image_url?: string | null;
 
   status: ScheduleStatus;
 
@@ -50,6 +51,7 @@ export type ScheduleInsert = {
 
   title: string;
   caption: string;
+  image_url?: string | null;
 
   status: ScheduleStatus;
 

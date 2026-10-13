@@ -33,6 +33,7 @@ export default async function ScheduleRoute() {
           template_id,
           title,
           caption,
+          image_url,
           status,
           scheduled_for,
           created_at,
