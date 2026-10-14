@@ -109,7 +109,7 @@ export default function LivePreview({
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-white leading-tight">dukcapil_official</p>
+                    <p className="text-xs font-semibold text-white leading-tight">dummy</p>
                     <p className="text-[10px] text-zinc-500">Indonesia</p>
                   </div>
                 </div>
@@ -153,7 +153,7 @@ export default function LivePreview({
 
                 {/* Caption Text */}
                 <div className="text-xs text-zinc-200 leading-relaxed max-h-36 overflow-y-auto">
-                  <span className="font-semibold text-white mr-1.5">dukcapil_official</span>
+                  <span className="font-semibold text-white mr-1.5">dummy</span>
                   {hasContent ? (
                     <span className="whitespace-pre-wrap">{displayText}</span>
                   ) : (
@@ -183,8 +183,8 @@ export default function LivePreview({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 overflow-hidden">
-                      <span className="text-xs font-bold text-white truncate">Dukcapil Prima</span>
-                      <span className="text-xs text-zinc-500 truncate">@dukcapil</span>
+                      <span className="text-xs font-bold text-white truncate">dummy prima</span>
+                      <span className="text-xs text-zinc-500 truncate">@dummy</span>
                       <span className="text-zinc-600">·</span>
                       <span className="text-xs text-zinc-500 shrink-0">Baru saja</span>
                     </div>
@@ -318,7 +318,7 @@ export default function LivePreview({
 
               {/* Bottom Caption Overlay */}
               <div className="relative z-10 max-w-[82%] text-white text-xs leading-relaxed">
-                <p className="font-bold text-sm mb-1 drop-shadow">@dukcapil_official</p>
+                <p className="font-bold text-sm mb-1 drop-shadow">@dummy</p>
                 <div className="max-h-24 overflow-y-auto pr-1">
                   {hasContent ? (
                     <p className="drop-shadow-md whitespace-pre-wrap">{displayText}</p>
@@ -328,7 +328,7 @@ export default function LivePreview({
                 </div>
                 <div className="flex items-center gap-1.5 mt-2 text-[11px] text-zinc-300 font-medium">
                   <Music2 className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">Suara Asli - Dukcapil Menyapa</span>
+                  <span className="truncate">Suara Asli - Hang Menyapa</span>
                 </div>
               </div>
             </div>
