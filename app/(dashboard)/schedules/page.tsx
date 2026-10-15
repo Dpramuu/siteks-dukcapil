@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { pool } from "@/lib/db";
 
-import { getSessionUserId } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 
 import SchedulePage from "./SchedulePage";
 
@@ -13,12 +13,14 @@ export default async function ScheduleRoute() {
   // 1. Ambil user dari session lokal
   // =====================================================
 
-  const userId = await getSessionUserId();
+  const user = await getSessionUser();
 
   // Belum login → ke halaman login
-  if (!userId) {
+  if (!user) {
     redirect("/login");
   }
+
+  const userId = user.id;
 
   // =====================================================
   // 2. Ambil schedules dan templates dari MySQL
@@ -132,6 +134,7 @@ export default async function ScheduleRoute() {
       initialSchedules={schedulesWithPlatforms as Schedule[]}
       initialTemplates={templatesData as Template[]}
       userId={userId}
+      user={user}
     />
   );
 }

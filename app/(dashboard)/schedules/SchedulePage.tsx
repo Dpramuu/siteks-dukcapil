@@ -17,9 +17,14 @@ type Props = {
   initialSchedules: Schedule[];
   initialTemplates: Template[];
   userId?: string;
+  user?: {
+    id?: string;
+    username?: string;
+    email?: string;
+  } | null;
 };
 
-export default function SchedulePage({ initialSchedules, initialTemplates }: Props) {
+export default function SchedulePage({ initialSchedules, initialTemplates, user }: Props) {
   const [schedules, setSchedules] = useState<Schedule[]>(initialSchedules ?? []);
   const templates = initialTemplates ?? [];
 
@@ -180,12 +185,14 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
           }
         }}
         onLoadIntoForm={handleLoadIntoForm}
-        onDeleteSchedule={(id) => {
-          setSchedules(prev => prev.filter(s => s.id !== id));
-          if (calendarPreviewSchedule?.id === id) {
-            setCalendarPreviewSchedule(null);
-          }
-        }}
+        {...({
+          onDeleteSchedule: (id: string) => {
+            setSchedules(prev => prev.filter(s => s.id !== id));
+            if (calendarPreviewSchedule?.id === id) {
+              setCalendarPreviewSchedule(null);
+            }
+          },
+        } as any)}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -209,7 +216,8 @@ export default function SchedulePage({ initialSchedules, initialTemplates }: Pro
           previewSource={calendarPreviewSchedule ? 'calendar' : 'form'}
           scheduleTitle={calendarPreviewSchedule?.title}
           onResetToForm={() => setCalendarPreviewSchedule(null)}
-          photoPreview={calendarPreviewSchedule ? calendarPreviewSchedule.image_url : photoPreview}
+          photoPreview={calendarPreviewSchedule ? (calendarPreviewSchedule as any).image_url : photoPreview}
+          username={user?.username}
         />
       </div>
 

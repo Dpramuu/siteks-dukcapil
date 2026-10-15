@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   Heart,
   MessageCircle,
@@ -24,6 +25,7 @@ type Props = {
   scheduleTitle?: string;
   onResetToForm?: () => void;
   photoPreview?: string | null;
+  username?: string;
 };
 
 export default function LivePreview({
@@ -35,7 +37,32 @@ export default function LivePreview({
   scheduleTitle,
   onResetToForm,
   photoPreview,
+  username,
 }: Props) {
+  const [currentUsername, setCurrentUsername] = useState<string | undefined>(
+    username
+  );
+
+  useEffect(() => {
+    if (username) {
+      setCurrentUsername(username);
+      return;
+    }
+
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user?.username) {
+          setCurrentUsername(data.user.username);
+        }
+      })
+      .catch(() => {});
+  }, [username]);
+
+  const displayUsername = currentUsername?.trim() || 'user';
+  const displayInitial = displayUsername.charAt(0).toUpperCase() || 'U';
+  const displayHandle = `@${displayUsername.toLowerCase().replace(/\s+/g, '_')}`;
+
   const displayText = caption.trim() || title.trim();
   const hasContent = Boolean(displayText);
 
@@ -105,11 +132,11 @@ export default function LivePreview({
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 p-[1.5px]">
                     <div className="w-full h-full rounded-full bg-black flex items-center justify-center text-xs font-bold text-white">
-                      D
+                      {displayInitial}
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-white leading-tight">dummy</p>
+                    <p className="text-xs font-semibold text-white leading-tight">{displayUsername}</p>
                     <p className="text-[10px] text-zinc-500">Indonesia</p>
                   </div>
                 </div>
@@ -153,7 +180,7 @@ export default function LivePreview({
 
                 {/* Caption Text */}
                 <div className="text-xs text-zinc-200 leading-relaxed max-h-36 overflow-y-auto">
-                  <span className="font-semibold text-white mr-1.5">dummy</span>
+                  <span className="font-semibold text-white mr-1.5">{displayUsername}</span>
                   {hasContent ? (
                     <span className="whitespace-pre-wrap">{displayText}</span>
                   ) : (
@@ -162,7 +189,7 @@ export default function LivePreview({
                 </div>
 
                 <p className="text-[10px] text-zinc-500 uppercase tracking-wider mt-2 pb-2">
-                  Baru saja · Diterbitkan
+                  Baru saja - Diterbitkan
                 </p>
               </div>
             </div>
@@ -176,16 +203,16 @@ export default function LivePreview({
               <div className="flex gap-3">
                 {/* Avatar */}
                 <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-sm font-bold text-white shrink-0">
-                  D
+                  {displayInitial}
                 </div>
 
                 {/* Tweet Body */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 overflow-hidden">
-                      <span className="text-xs font-bold text-white truncate">dummy prima</span>
-                      <span className="text-xs text-zinc-500 truncate">@dummy</span>
-                      <span className="text-zinc-600">·</span>
+                      <span className="text-xs font-bold text-white truncate">{displayUsername}</span>
+                      <span className="text-xs text-zinc-500 truncate">{displayHandle}</span>
+                      <span className="text-zinc-600">-</span>
                       <span className="text-xs text-zinc-500 shrink-0">Baru saja</span>
                     </div>
                     <button type="button" className="text-zinc-500 hover:text-white">
@@ -274,7 +301,7 @@ export default function LivePreview({
                 <div className="relative mb-1">
                   <div className="w-9 h-9 rounded-full bg-gradient-to-r from-cyan-400 to-pink-500 p-0.5">
                     <div className="w-full h-full rounded-full bg-black flex items-center justify-center text-xs font-bold text-white">
-                      D
+                      {displayInitial}
                     </div>
                   </div>
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-pink-500 text-white text-[10px] font-bold flex items-center justify-center">
@@ -318,7 +345,7 @@ export default function LivePreview({
 
               {/* Bottom Caption Overlay */}
               <div className="relative z-10 max-w-[82%] text-white text-xs leading-relaxed">
-                <p className="font-bold text-sm mb-1 drop-shadow">@dummy</p>
+                <p className="font-bold text-sm mb-1 drop-shadow">{displayHandle}</p>
                 <div className="max-h-24 overflow-y-auto pr-1">
                   {hasContent ? (
                     <p className="drop-shadow-md whitespace-pre-wrap">{displayText}</p>

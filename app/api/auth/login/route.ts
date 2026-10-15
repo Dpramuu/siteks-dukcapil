@@ -63,7 +63,10 @@ export async function POST(request: Request) {
       );
     }
 
-    await createSession(user.id);
+    await createSession(user.id, {
+      username: user.username,
+      email: user.email,
+    });
 
     return NextResponse.json({
       success: true,

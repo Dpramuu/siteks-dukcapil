@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
-
+import { useState, useEffect } from "react";
 import Link from "next/link";
-
 import { usePathname } from "next/navigation";
 
 const menuItems = [
@@ -24,10 +22,38 @@ const menuItems = [
   },
 ];
 
-export default function Sidebar() {
-  const pathname = usePathname();
+type UserSession = {
+  id?: string;
+  username?: string;
+  email?: string;
+};
 
+type SidebarProps = {
+  user?: UserSession | null;
+};
+
+export default function Sidebar({ user: initialUser }: SidebarProps) {
+  const pathname = usePathname();
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(
+    initialUser ?? null
+  );
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    if (initialUser) {
+      setCurrentUser(initialUser);
+      return;
+    }
+
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user) {
+          setCurrentUser(data.user);
+        }
+      })
+      .catch(() => {});
+  }, [initialUser]);
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -35,15 +61,12 @@ export default function Sidebar() {
     setIsLoggingOut(true);
 
     try {
-      // Panggil API logout untuk menghapus
-      // session cookie lokal
-      await fetch("/logout", {
+      await fetch("/api/auth/logout", {
         method: "POST",
       });
     } catch (err) {
       console.error("Logout error:", err);
     } finally {
-      // Redirect ke halaman login
       window.location.href = "/login";
     }
   };
@@ -89,7 +112,25 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom */}
-      <div className="border-t border-zinc-800 p-3">
+      <div className="border-t border-zinc-800 p-3 flex flex-col gap-2">
+        {currentUser && (
+          <div className="flex items-center gap-2.5 rounded-lg bg-zinc-800/40 border border-zinc-800 px-3 py-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600/20 border border-blue-500/30 text-xs font-semibold text-blue-400 shrink-0">
+              {currentUser.username
+                ? currentUser.username.charAt(0).toUpperCase()
+                : "U"}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-white truncate">
+                {currentUser.username}
+              </p>
+              <p className="text-[11px] text-zinc-500 truncate">
+                {currentUser.email}
+              </p>
+            </div>
+          </div>
+        )}
+
         <button
           type="button"
           onClick={handleLogout}
@@ -109,3 +150,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+

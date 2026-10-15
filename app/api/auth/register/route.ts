@@ -68,7 +68,10 @@ export async function POST(request: Request) {
       [userId, username, email, passwordHash],
     );
 
-    await createSession(userId);
+    await createSession(userId, {
+      username,
+      email,
+    });
 
     return NextResponse.json({
       success: true,

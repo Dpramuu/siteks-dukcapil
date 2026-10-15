@@ -169,7 +169,7 @@ export default function Calendar({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-medium text-white">Schedule</h1>
-          <p className="text-xs text-zinc-500 mt-1">{MONTHS[m]} {y} · Kelola jadwal konten</p>
+          <p className="text-xs text-zinc-500 mt-1">{MONTHS[m]} {y} - Kelola jadwal konten</p>
         </div>
         <div className="flex gap-2">
           {FILTERS.map(f => (

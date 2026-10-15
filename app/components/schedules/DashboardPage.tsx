@@ -11,6 +11,11 @@ type UpcomingSchedule = {
 };
 
 type Props = {
+  user?: {
+    id?: string;
+    username?: string;
+    email?: string;
+  } | null;
   stats: {
     totalKonten: number;
     terjadwal:   number;
@@ -24,6 +29,7 @@ type Props = {
 const PLATFORMS: Platform[] = ['Instagram', 'TikTok', 'Twitter'];
 
 export default function DashboardPage({
+  user,
   stats,
   platformCount,
   monthlyCount,
@@ -53,17 +59,19 @@ export default function DashboardPage({
 
     const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-    if (isSameDay(d, now))      return `Hari ini · ${timeStr}`;
-    if (isSameDay(d, tomorrow)) return `Besok · ${timeStr}`;
-    return `${d.getDate()} ${MONTHS[d.getMonth()]} · ${timeStr}`;
+    if (isSameDay(d, now))      return `Hari ini - ${timeStr}`;
+    if (isSameDay(d, tomorrow)) return `Besok - ${timeStr}`;
+    return `${d.getDate()} ${MONTHS[d.getMonth()]} - ${timeStr}`;
   };
 
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-xl font-medium text-white">Dashboard</h1>
+        <h1 className="text-xl font-medium text-white">
+          Selamat datang{user?.username ? `, ${user.username}` : ''}
+        </h1>
         <p className="text-xs text-zinc-500 mt-1">
-          {MONTHS[new Date().getMonth()]} {new Date().getFullYear()} · Ringkasan konten kamu
+          {MONTHS[new Date().getMonth()]} {new Date().getFullYear()} - Ringkasan konten kamu
         </p>
       </div>
 
