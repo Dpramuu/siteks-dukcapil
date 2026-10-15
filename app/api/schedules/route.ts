@@ -6,7 +6,7 @@ import { pool } from "@/lib/db";
 
 import { getSessionUserId } from "@/lib/auth";
 
-import type { ScheduleInsert } from "@/app/components/schedules/types";
+import type { Platform, ScheduleInsert } from "@/app/components/schedules/types";
 
 const PLATFORMS = ["Instagram", "TikTok", "Twitter"] as const;
 
@@ -130,10 +130,34 @@ export async function POST(request: NextRequest) {
     );
 
     // =====================================================
-    // 7. Otomatis insert 3 platform
+    // 7. Insert platform yang dipilih
     // =====================================================
 
-    for (const platform of PLATFORMS) {
+    let platformsToInsert: readonly Platform[] = PLATFORMS;
+
+    if (body.platforms !== undefined) {
+      if (!Array.isArray(body.platforms) || body.platforms.length === 0) {
+        return NextResponse.json(
+          { error: "Pilih minimal 1 platform tujuan upload" },
+          { status: 400 },
+        );
+      }
+
+      const filtered = body.platforms.filter((p): p is Platform =>
+        (PLATFORMS as readonly string[]).includes(p),
+      );
+
+      if (filtered.length === 0) {
+        return NextResponse.json(
+          { error: "Platform yang dipilih tidak valid" },
+          { status: 400 },
+        );
+      }
+
+      platformsToInsert = Array.from(new Set(filtered));
+    }
+
+    for (const platform of platformsToInsert) {
       await pool.execute(
         `
         INSERT INTO schedule_platforms (

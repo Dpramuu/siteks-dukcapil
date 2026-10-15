@@ -133,7 +133,15 @@ export default function DayPanel({
                 {/* Progress */}
                 <div className="mt-3.5">
                   <div className="mb-1.5 flex items-center justify-between text-[11px] text-muted">
-                    <span>Diunggah ke platform</span>
+                    <span>
+                      {total === 1 && s.schedule_platforms?.[0]
+                        ? `Diunggah ke ${
+                            s.schedule_platforms[0].platform === 'Twitter'
+                              ? 'X'
+                              : s.schedule_platforms[0].platform
+                          }`
+                        : 'Diunggah ke platform'}
+                    </span>
                     <span className="font-medium tabular-nums text-ink-soft">
                       {done}/{total}
                     </span>
@@ -154,7 +162,15 @@ export default function DayPanel({
                 </div>
 
                 {/* Checklist platform */}
-                <div className="mt-3 grid grid-cols-3 gap-1.5">
+                <div
+                  className={`mt-3 grid gap-1.5 ${
+                    (s.schedule_platforms?.length ?? 0) === 1
+                      ? 'grid-cols-1'
+                      : (s.schedule_platforms?.length ?? 0) === 2
+                      ? 'grid-cols-2'
+                      : 'grid-cols-3'
+                  }`}
+                >
                   {PLATFORMS.map((p) => {
                     const sp = s.schedule_platforms?.find(
                       (x) => x.platform === p,
@@ -173,7 +189,7 @@ export default function DayPanel({
                         aria-label={`${p}: ${
                           sp.is_uploaded ? 'sudah diunggah' : 'belum diunggah'
                         }. Klik untuk mengubah.`}
-                        className={`flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-1.5 py-2 text-xs font-medium transition-colors disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                        className={`flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-medium transition-colors disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                           sp.is_uploaded
                             ? 'border-accent bg-accent-soft text-accent'
                             : 'border-line text-ink-soft hover:border-line-strong hover:text-ink'

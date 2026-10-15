@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import {
   Heart,
   MessageCircle,
@@ -22,6 +23,7 @@ type Props = {
   title: string;
   caption: string;
   photo?: string | null;
+  availablePlatforms?: Platform[];
 };
 
 const EMPTY = 'Ketik judul atau caption untuk melihat pratinjau…';
@@ -32,7 +34,19 @@ export default function LivePreview({
   title,
   caption,
   photo,
+  availablePlatforms,
 }: Props) {
+  const platformsToDisplay =
+    availablePlatforms && availablePlatforms.length > 0
+      ? PLATFORMS.filter((p) => availablePlatforms.includes(p))
+      : PLATFORMS;
+
+  useEffect(() => {
+    if (platformsToDisplay.length > 0 && !platformsToDisplay.includes(platform)) {
+      setPlatform(platformsToDisplay[0]);
+    }
+  }, [platformsToDisplay, platform, setPlatform]);
+
   const text = caption.trim() || title.trim();
   const limit = PLATFORM_LIMIT[platform];
   const count = caption.trim().length;
@@ -44,9 +58,15 @@ export default function LivePreview({
       <div
         role="group"
         aria-label="Pratinjau untuk platform"
-        className="grid grid-cols-3 gap-1 rounded-xl border border-line bg-surface p-1"
+        className={`grid gap-1 rounded-xl border border-line bg-surface p-1 ${
+          platformsToDisplay.length === 1
+            ? 'grid-cols-1'
+            : platformsToDisplay.length === 2
+            ? 'grid-cols-2'
+            : 'grid-cols-3'
+        }`}
       >
-        {PLATFORMS.map((p) => (
+        {platformsToDisplay.map((p) => (
           <button
             key={p}
             type="button"

@@ -59,6 +59,7 @@ export type ScheduleInsert = {
    * Data dari form dikirim sebagai string.
    */
   scheduled_for: string;
+  platforms?: Platform[];
 };
 
 // ── Template ──

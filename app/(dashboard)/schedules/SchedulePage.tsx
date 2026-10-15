@@ -139,6 +139,7 @@ export default function SchedulePage({
         imageUrl: s.image_url ?? null,
         date: selectedDate,
         time: timeOf(s.scheduled_for),
+        platforms: s.schedule_platforms?.map((sp) => sp.platform),
       },
     });
 
@@ -217,7 +218,8 @@ export default function SchedulePage({
 
   const openPreview = (s: Schedule) => {
     setPreviewTarget(s);
-    setPreviewPlatform('Instagram');
+    const available = s.schedule_platforms?.map((p) => p.platform) ?? [];
+    setPreviewPlatform(available[0] ?? 'Instagram');
   };
 
   const copyCaption = async (text: string) => {
@@ -368,6 +370,9 @@ export default function SchedulePage({
               title={previewTarget.title}
               caption={previewTarget.caption ?? ''}
               photo={previewTarget.image_url ?? null}
+              availablePlatforms={previewTarget.schedule_platforms?.map(
+                (p) => p.platform,
+              )}
             />
           </div>
 

@@ -14,6 +14,7 @@ export type ComposerInitial = {
   date?: string; // YYYY-MM-DD
   time?: string; // HH:mm
   imageUrl?: string | null;
+  platforms?: Platform[];
 };
 
 type Props = {
@@ -56,7 +57,16 @@ export default function ScheduleForm({
   const [caption, setCaption] = useState(initial?.caption ?? '');
   const [date, setDate] = useState(initial?.date ?? dateKey(new Date()));
   const [time, setTime] = useState(initial?.time ?? '09:00');
-  const [previewPlatform, setPreviewPlatform] = useState<Platform>('Instagram');
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(
+    initial?.platforms && initial.platforms.length > 0
+      ? initial.platforms
+      : ['Instagram', 'TikTok', 'Twitter'],
+  );
+  const [previewPlatform, setPreviewPlatform] = useState<Platform>(
+    initial?.platforms && initial.platforms.length > 0
+      ? initial.platforms[0]
+      : 'Instagram',
+  );
 
   const [file, setFile] = useState<File | null>(null);
   const [existingImage, setExistingImage] = useState<string | null>(
@@ -66,7 +76,11 @@ export default function ScheduleForm({
   const [dragging, setDragging] = useState(false);
   const [photoError, setPhotoError] = useState('');
 
-  const [errors, setErrors] = useState<{ title?: string; when?: string }>({});
+  const [errors, setErrors] = useState<{
+    title?: string;
+    when?: string;
+    platforms?: string;
+  }>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -93,10 +107,17 @@ export default function ScheduleForm({
   const when = date && time ? new Date(`${date}T${time}`) : null;
   const isPast = when !== null && when.getTime() < Date.now();
 
+  const initialPlatforms =
+    initial?.platforms && initial.platforms.length > 0
+      ? initial.platforms
+      : ['Instagram', 'TikTok', 'Twitter'];
+
   const dirty =
     title !== (initial?.title ?? '') ||
     caption !== (initial?.caption ?? '') ||
-    file !== null;
+    file !== null ||
+    JSON.stringify([...selectedPlatforms].sort()) !==
+      JSON.stringify([...initialPlatforms].sort());
 
   const requestClose = () => {
     if (saving) return;
@@ -137,18 +158,45 @@ export default function ScheduleForm({
     setCaption(t.content);
     if (!title.trim()) setTitle(t.name);
     setPreviewPlatform(t.platform);
+    setSelectedPlatforms((prev) =>
+      prev.includes(t.platform) ? prev : [...prev, t.platform],
+    );
+    setErrors((p) => ({ ...p, platforms: undefined }));
     setTemplatesOpen(false);
+  };
+
+  const togglePlatform = (p: Platform) => {
+    setSelectedPlatforms((prev) => {
+      const exists = prev.includes(p);
+      const next = exists ? prev.filter((item) => item !== p) : [...prev, p];
+
+      if (next.length === 0) {
+        setErrors((errs) => ({
+          ...errs,
+          platforms: 'Pilih minimal satu platform tujuan upload.',
+        }));
+      } else {
+        setErrors((errs) => ({ ...errs, platforms: undefined }));
+        if (!next.includes(previewPlatform)) {
+          setPreviewPlatform(next[0]);
+        }
+      }
+      return next;
+    });
   };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (saving) return;
 
-    const next: { title?: string; when?: string } = {};
+    const next: { title?: string; when?: string; platforms?: string } = {};
     if (!title.trim()) next.title = 'Judul konten wajib diisi.';
     if (!date || !time) next.when = 'Tanggal dan waktu wajib diisi.';
+    if (selectedPlatforms.length === 0) {
+      next.platforms = 'Pilih minimal satu platform tujuan upload.';
+    }
     setErrors(next);
-    if (next.title || next.when) {
+    if (next.title || next.when || next.platforms) {
       setTab('form');
       return;
     }
@@ -186,6 +234,7 @@ export default function ScheduleForm({
           status: 'scheduled',
           scheduled_for: new Date(`${date}T${time}`).toISOString(),
           image_url: imageUrl,
+          platforms: selectedPlatforms,
         }),
       });
 
@@ -396,6 +445,14 @@ export default function ScheduleForm({
                   {limit.toLocaleString('id-ID')} karakter (batas{' '}
                   {previewPlatform === 'Twitter' ? 'X' : previewPlatform})
                 </p>
+                {selectedPlatforms.includes('Twitter') &&
+                  previewPlatform !== 'Twitter' &&
+                  caption.length > PLATFORM_LIMIT['Twitter'] && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-danger">
+                      <i className="ti ti-alert-triangle text-xs" aria-hidden="true" />
+                      Caption melebihi 280 karakter untuk X / Twitter ({caption.length}/280).
+                    </p>
+                  )}
               </div>
 
               {/* Foto */}
@@ -480,25 +537,99 @@ export default function ScheduleForm({
                 )}
               </div>
 
-              {/* Info platform */}
+              {/* Platform tujuan upload */}
+              <fieldset>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <legend className="text-sm font-medium text-ink">
+                    Platform tujuan upload
+                  </legend>
+                  <span className="text-xs text-muted">
+                    {selectedPlatforms.length} dipilih
+                  </span>
+                </div>
+                <p className="mb-2.5 text-xs text-muted">
+                  Pilih platform tujuan (bisa satu atau lebih). Jadwal dianggap selesai jika platform yang dipilih sudah terunggah.
+                </p>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {PLATFORMS.map((p) => {
+                    const isSelected = selectedPlatforms.includes(p);
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => togglePlatform(p)}
+                        aria-pressed={isSelected}
+                        className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border p-3 text-center transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                          isSelected
+                            ? 'border-accent bg-accent-soft/60 text-accent ring-1 ring-accent'
+                            : 'border-line bg-surface text-ink-soft hover:border-line-strong hover:bg-bg/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <i
+                            className={`ti ${PLATFORM_ICON[p]} text-lg`}
+                            aria-hidden="true"
+                          />
+                          <span className="text-xs font-semibold text-ink">
+                            {p === 'Twitter' ? 'X' : p}
+                          </span>
+                        </div>
+                        <span
+                          className={`inline-flex items-center gap-1 text-[11px] ${
+                            isSelected ? 'font-medium text-accent' : 'text-muted'
+                          }`}
+                        >
+                          <i
+                            className={`ti ${
+                              isSelected
+                                ? 'ti-circle-check-filled'
+                                : 'ti-circle'
+                            } text-xs`}
+                            aria-hidden="true"
+                          />
+                          {isSelected ? 'Dipilih' : 'Tidak dipilih'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {errors.platforms && (
+                  <p className="mt-1.5 text-xs text-danger">
+                    {errors.platforms}
+                  </p>
+                )}
+              </fieldset>
+
+              {/* Info ringkas status penyelesaian */}
               <div className="flex items-start gap-3 rounded-xl bg-bg p-3.5">
                 <i className="ti ti-info-circle mt-0.5 text-base text-accent" aria-hidden="true" />
                 <div className="text-xs leading-relaxed text-muted">
-                  <p>
-                    Jadwal dibuat untuk <span className="font-medium text-ink">semua platform</span>.
-                    Centang tiap platform di agenda setelah konten diunggah.
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {PLATFORMS.map((p) => (
-                      <span
-                        key={p}
-                        className="inline-flex items-center gap-1 rounded-full border border-line bg-surface px-2 py-0.5 text-[11px] font-medium text-ink-soft"
-                      >
-                        <i className={`ti ${PLATFORM_ICON[p]} text-xs`} aria-hidden="true" />
-                        {p === 'Twitter' ? 'X' : p}
+                  {selectedPlatforms.length === 0 ? (
+                    <p className="text-danger">
+                      Pilih minimal satu platform di atas agar jadwal dapat diproses.
+                    </p>
+                  ) : selectedPlatforms.length === 1 ? (
+                    <p>
+                      Jadwal ini hanya akan dipantau untuk{' '}
+                      <span className="font-semibold text-ink">
+                        {selectedPlatforms[0] === 'Twitter' ? 'X' : selectedPlatforms[0]}
                       </span>
-                    ))}
-                  </div>
+                      . Status otomatis menjadi{' '}
+                      <span className="font-semibold text-ink">Selesai</span> saat platform tersebut dicentang di agenda.
+                    </p>
+                  ) : (
+                    <p>
+                      Jadwal ini dipantau untuk{' '}
+                      <span className="font-semibold text-ink">{selectedPlatforms.length} platform</span> (
+                      {selectedPlatforms
+                        .map((p) => (p === 'Twitter' ? 'X' : p))
+                        .join(', ')}
+                      ). Status otomatis menjadi{' '}
+                      <span className="font-semibold text-ink">Selesai</span> saat semua platform terpilih dicentang di agenda.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -516,6 +647,9 @@ export default function ScheduleForm({
                 title={title}
                 caption={caption}
                 photo={photo}
+                availablePlatforms={
+                  selectedPlatforms.length > 0 ? selectedPlatforms : undefined
+                }
               />
             </aside>
           </div>

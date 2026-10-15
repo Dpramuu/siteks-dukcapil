@@ -57,24 +57,27 @@ export const progressOf = (s: Schedule) => {
 };
 
 export const isDone = (s: Schedule) => {
+  if (s.status === 'published') return true;
   const { done, total } = progressOf(s);
   return total > 0 && done === total;
 };
 
 export const isPending = (s: Schedule) => {
+  if (isDone(s)) return false;
   const { done, total } = progressOf(s);
-  return total > 0 && done < total;
+  return total > 0 ? done < total : s.status === 'scheduled';
 };
 
 export const isOverdue = (s: Schedule, now = new Date()) => {
+  if (isDone(s)) return false;
   const d = toDate(s.scheduled_for);
   return !!d && d.getTime() < now.getTime() && isPending(s);
 };
 
 export const statusOf = (s: Schedule, now = new Date()) => {
+  if (isDone(s)) return { label: 'Selesai', className: 'bg-ink text-bg' };
   if (isOverdue(s, now))
     return { label: 'Terlewat', className: 'bg-danger/10 text-danger' };
-  if (isDone(s)) return { label: 'Selesai', className: 'bg-ink text-bg' };
   if (s.status === 'draft')
     return { label: 'Draft', className: 'border border-line text-muted' };
   return { label: 'Terjadwal', className: 'bg-accent-soft text-accent' };
