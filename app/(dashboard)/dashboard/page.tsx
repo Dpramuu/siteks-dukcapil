@@ -1,204 +1,209 @@
-  import { redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
-  import { pool } from "@/lib/db";
+import { pool } from "@/lib/db";
 
-  import { getSessionUser } from "@/lib/auth";
+import { getSessionUserId } from "@/lib/auth";
 
-  import DashboardPage from "@/app/components/schedules/DashboardPage";
+import DashboardPage, {
+  type MonthBucket,
+} from "@/app/components/schedules/DashboardPage";
 
-  import type {
-    Platform,
-    ScheduleStatus,
-  } from "@/app/components/schedules/types";
+import type { Platform } from "@/app/components/schedules/types";
 
-  interface DashboardSchedule {
-    id: string;
-    title: string;
-    status: ScheduleStatus;
-    scheduled_for: string | null;
-    schedule_platforms: {
-      platform: Platform;
-      is_uploaded: boolean;
-    }[];
+interface ScheduleRow {
+  id: string;
+  title: string;
+  status: string;
+  scheduled_for: Date | string | null;
+}
+
+interface PlatformRow {
+  schedule_id: string;
+  platform: Platform;
+  is_uploaded: number | boolean;
+}
+
+type ScheduleState = "done" | "overdue" | "pending" | "draft";
+
+const PLATFORMS: Platform[] = ["Instagram", "TikTok", "Twitter"];
+
+const emptyYear = (): MonthBucket[] =>
+  Array.from({ length: 12 }, () => ({ done: 0, pending: 0, overdue: 0 }));
+
+const toDate = (value: Date | string | null): Date | null => {
+  if (!value) return null;
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+export default async function DashboardRoute() {
+  // Ambil user dari session lokal
+  const userId = await getSessionUserId();
+
+  // Belum login → ke halaman login
+  if (!userId) {
+    redirect("/login");
   }
-
-  interface ScheduleRow {
-    id: string;
-    title: string;
-    status: ScheduleStatus;
-    scheduled_for: string | null;
-  }
-
-  interface SchedulePlatformRow {
-    schedule_id: string;
-    platform: Platform;
-    is_uploaded: boolean;
-  }
-
-  export default async function DashboardRoute() {
-    // Ambil user dari session lokal
-    const user = await getSessionUser();
-
-    // Belum login → ke halaman login
-    if (!user) {
-      redirect("/login");
-    }
-
-    const userId = user.id;
-
-    // =========================================================
-    // 1. Ambil data schedules dari MySQL
-    // =========================================================
-
-    const [scheduleRows] = await pool.execute(
-      `
-      SELECT
-        id,
-        title,
-        status,
-        scheduled_for
-      FROM schedules
-      WHERE user_id = ?
-      ORDER BY
-        scheduled_for IS NULL ASC,
-        scheduled_for ASC
-      `,
-      [userId],
-    );
-
-    const schedules = scheduleRows as ScheduleRow[];
-
-    // =========================================================
-    // 2. Ambil platform untuk schedule milik user tersebut
-    // =========================================================
-
-    const [platformRows] = await pool.execute(
-      `
-      SELECT
-        sp.schedule_id,
-        sp.platform,
-        sp.is_uploaded
-      FROM schedule_platforms sp
-      INNER JOIN schedules s
-        ON s.id = sp.schedule_id
-      WHERE s.user_id = ?
-      ORDER BY sp.created_at ASC
-      `,
-      [userId],
-    );
-
-    const schedulePlatforms = platformRows as SchedulePlatformRow[];
-
-    // =========================================================
-    // 3. Gabungkan schedule + platform
-    // =========================================================
-
-    const allSchedules: DashboardSchedule[] = schedules.map((schedule) => {
-      const platforms = schedulePlatforms
-        .filter((platform) => platform.schedule_id === schedule.id)
-        .map((platform) => ({
-          platform: platform.platform,
-          is_uploaded: Boolean(platform.is_uploaded),
-        }));
-
-      return {
-        id: schedule.id,
-        title: schedule.title,
-        status: schedule.status,
-        scheduled_for: schedule.scheduled_for,
-        schedule_platforms: platforms,
-      };
-    });
-
-    // =========================================================
-    // 4. Hitung statistik
-    // =========================================================
-
-    const totalKonten = allSchedules.length;
-
-    const terjadwal = allSchedules.filter((s) => s.status === "scheduled").length;
-
-    const terbit = allSchedules.filter((s) => s.status === "published").length;
-
-    // =========================================================
-    // 5. Hitung konten per platform
-    // =========================================================
-
-    const platformCount: Record<string, number> = {};
-
-    for (const schedule of allSchedules) {
-      const platforms = schedule.schedule_platforms ?? [];
-
-      // Hindari duplikat platform
-      const unique = new Set(platforms.map((p) => p.platform));
-
-      for (const platform of unique) {
-        platformCount[platform] = (platformCount[platform] ?? 0) + 1;
-      }
-    }
-
-    // =========================================================
-    // 6. Hitung aktivitas per bulan tahun berjalan
-    // =========================================================
-
-    const currentYear = new Date().getFullYear();
-
-    const monthlyCount: number[] = Array(12).fill(0);
-
-    for (const schedule of allSchedules) {
-      if (!schedule.scheduled_for) {
-        continue;
-      }
-
-      const date = new Date(schedule.scheduled_for);
-
-      if (date.getFullYear() === currentYear) {
-        monthlyCount[date.getMonth()]++;
-      }
-    }
 
   // =========================================================
-  // 7. Ambil 3 jadwal terdekat yang belum published
+  // 1. Ambil schedules + platform milik user
+  // =========================================================
+
+  const [scheduleRows] = await pool.execute(
+    `
+    SELECT
+      id,
+      title,
+      status,
+      scheduled_for
+    FROM schedules
+    WHERE user_id = ?
+    ORDER BY
+      scheduled_for IS NULL ASC,
+      scheduled_for ASC
+    `,
+    [userId],
+  );
+
+  const [platformRows] = await pool.execute(
+    `
+    SELECT
+      sp.schedule_id,
+      sp.platform,
+      sp.is_uploaded
+    FROM schedule_platforms sp
+    INNER JOIN schedules s
+      ON s.id = sp.schedule_id
+    WHERE s.user_id = ?
+    ORDER BY sp.created_at ASC
+    `,
+    [userId],
+  );
+
+  const schedules = scheduleRows as ScheduleRow[];
+  const platformList = platformRows as PlatformRow[];
+
+  // =========================================================
+  // 2. Kelompokkan platform per schedule + hitung per platform
+  // =========================================================
+
+  const platformsBySchedule = new Map<
+    string,
+    { platform: Platform; is_uploaded: boolean }[]
+  >();
+
+  const platformStats = Object.fromEntries(
+    PLATFORMS.map((p) => [p, { total: 0, uploaded: 0 }]),
+  ) as Record<Platform, { total: number; uploaded: number }>;
+
+  for (const row of platformList) {
+    const uploaded = Boolean(row.is_uploaded);
+
+    const list = platformsBySchedule.get(row.schedule_id) ?? [];
+    list.push({ platform: row.platform, is_uploaded: uploaded });
+    platformsBySchedule.set(row.schedule_id, list);
+
+    if (platformStats[row.platform]) {
+      platformStats[row.platform].total++;
+      if (uploaded) platformStats[row.platform].uploaded++;
+    }
+  }
+
+  // =========================================================
+  // 3. Klasifikasi tiap schedule (sumber kebenaran: checklist + waktu)
   // =========================================================
 
   const now = new Date();
+  const currentYear = now.getFullYear();
 
-  const upcomingSchedules = allSchedules
-    .filter((schedule) => {
-      if (
-        schedule.status === "published" ||
-        !schedule.scheduled_for
-      ) {
-        return false;
-      }
+  const stats = {
+    totalKonten: schedules.length,
+    terjadwal: 0,
+    terlewat: 0,
+    terbit: 0,
+    draft: 0,
+  };
 
-      const scheduledDate = new Date(
-        schedule.scheduled_for
-      );
+  const monthlyByYear: Record<string, MonthBucket[]> = {};
+  const yearSet = new Set<number>([currentYear]);
 
-      return scheduledDate >= now;
-    })
+  const upcoming: {
+    id: string;
+    title: string;
+    scheduled_for: string;
+    schedule_platforms: { platform: Platform; is_uploaded: boolean }[];
+    ts: number;
+  }[] = [];
+
+  for (const schedule of schedules) {
+    const platforms = platformsBySchedule.get(schedule.id) ?? [];
+    const when = toDate(schedule.scheduled_for);
+
+    const allUploaded =
+      platforms.length > 0 && platforms.every((p) => p.is_uploaded);
+
+    let state: ScheduleState;
+
+    if (allUploaded) {
+      state = "done";
+    } else if (!when) {
+      state = "draft"; // belum punya tanggal
+    } else {
+      state = when.getTime() < now.getTime() ? "overdue" : "pending";
+    }
+
+    // Statistik ringkas
+    if (state === "done") stats.terbit++;
+    else if (state === "overdue") stats.terlewat++;
+    else if (state === "pending") stats.terjadwal++;
+    else stats.draft++;
+
+    // Aktivitas per bulan (semua tahun)
+    if (when && state !== "draft") {
+      const year = when.getFullYear();
+      yearSet.add(year);
+
+      const key = String(year);
+      monthlyByYear[key] ??= emptyYear();
+      monthlyByYear[key][when.getMonth()][state]++;
+    }
+
+    // Jadwal mendatang
+    if (when && state === "pending") {
+      upcoming.push({
+        id: schedule.id,
+        title: schedule.title,
+        scheduled_for: when.toISOString(),
+        schedule_platforms: platforms,
+        ts: when.getTime(),
+      });
+    }
+  }
+
+  for (const year of yearSet) {
+    monthlyByYear[String(year)] ??= emptyYear();
+  }
+
+  const years = [...yearSet].sort((a, b) => a - b);
+
+  const upcomingSchedules = upcoming
+    .sort((a, b) => a.ts - b.ts)
     .slice(0, 3)
-    .map((schedule) => ({
-      ...schedule,
-      scheduled_for: schedule.scheduled_for!,
-    }));
+    .map(({ ts: _ts, ...item }) => item);
 
   // =========================================================
-  // 8. Tampilkan Dashboard
+  // 4. Tampilkan Dashboard
   // =========================================================
 
   return (
     <DashboardPage
-      user={user}
-      stats={{
-        totalKonten,
-        terjadwal,
-        terbit,
-      }}
-      platformCount={platformCount}
-      monthlyCount={monthlyCount}
+      stats={stats}
+      platformStats={platformStats}
+      monthlyByYear={monthlyByYear}
+      years={years}
       upcomingSchedules={upcomingSchedules}
     />
   );
-  }
+}

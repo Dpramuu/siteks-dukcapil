@@ -28,7 +28,7 @@ export default function TemplatePage({ initialTemplates }: Props) {
     ? templates
     : templates.filter(t => t.platform === filter);
 
-  const handleSave = async (data: { name: string; platform: Platform; content: string }) => {
+  const handleSave = async (data: { name: string; platform: Platform; content: string }): Promise<string | null> => {
     if (editTarget) {
       // PATCH
       const res = await fetch(`/api/templates/${editTarget.id}`, {
@@ -36,7 +36,7 @@ export default function TemplatePage({ initialTemplates }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(data),
       });
-      if (!res.ok) { alert('Gagal mengupdate template.'); return; }
+      if (!res.ok) { alert('Gagal mengupdate template.'); return 'Gagal mengupdate template.'; }
       const updated: Template = await res.json();
       setTemplates(prev => prev.map(t => t.id === updated.id ? updated : t));
     } else {
@@ -46,12 +46,13 @@ export default function TemplatePage({ initialTemplates }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(data),
       });
-      if (!res.ok) { alert('Gagal menyimpan template.'); return; }
+      if (!res.ok) { alert('Gagal menyimpan template.'); return 'Gagal menyimpan template.'; }
       const created: Template = await res.json();
       setTemplates(prev => [...prev, created]);
     }
     setEditTarget(null);
     setIsFormOpen(false);
+    return null;
   };
 
   const handleDelete = async () => {

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import '@tabler/icons-webfont/dist/tabler-icons.css';
 import ThemeProvider from "@/app/providers/ThemeProvider";
@@ -14,10 +14,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  axes: ["SOFT", "WONK", "opsz"],
+});
+
 export const metadata: Metadata = {
   title: {
-    default: "SITEKS DUKCAPIL - Sistem Informasi Teks & Penjadwalan Konten",
-    template: "%s | SITEKS DUKCAPIL",
+    default: "SIMANTEN - Sistem Informasi Manajemen & Penjadwalan Konten",
+    template: "%s | SIMANTEN",
   },
   description:
     "Platform manajemen template teks dan penjadwalan konten media sosial resmi Dinas Kependudukan dan Pencatatan Sipil.",
@@ -33,7 +39,7 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
       data-scroll-behavior="smooth"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider>{children}</ThemeProvider>

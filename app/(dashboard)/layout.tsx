@@ -1,19 +1,16 @@
 import Sidebar from "../components/sidebar";
-import { getSessionUser } from "@/lib/auth";
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getSessionUser();
-
   return (
-    <div className="flex h-screen">
-      <Sidebar user={user} />
-      <main className="flex-1 overflow-auto bg-zinc-950 p-6">
+    <div className="flex h-screen bg-bg text-ink">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 md:pb-8 lg:p-8">
         {children}
       </main>
     </div>
   );
-}
+}
