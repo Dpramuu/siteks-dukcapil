@@ -134,7 +134,6 @@ export default async function ScheduleRoute() {
       initialSchedules={schedulesWithPlatforms as Schedule[]}
       initialTemplates={templatesData as Template[]}
       userId={userId}
-      user={user}
     />
   );
 }

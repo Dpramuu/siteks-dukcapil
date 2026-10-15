@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, CircleAlert, Eye, EyeOff, LoaderCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, CircleAlert, Eye, EyeOff, LoaderCircle } from "lucide-react";
 
 import { gsap, prefersReducedMotion } from "@/lib/gsap";
 import CustomCursor from "@/app/components/ui/CustomCursor";
@@ -267,7 +267,20 @@ export default function LoginPage() {
       </div>
 
       {/* ---------- bar atas ---------- */}
-      <header data-auth-in className="relative z-10 flex items-center justify-end px-6 py-5 sm:px-10">
+      <header data-auth-in className="relative z-10 flex items-center justify-between px-6 py-5 sm:px-10">
+        <Magnetic strength={0.15}>
+          <Link
+            href="/"
+            className="press group inline-flex items-center gap-2 rounded-full border border-line bg-surface/60 px-4 py-2 text-xs font-medium text-ink backdrop-blur-md transition-all duration-300 hover:border-ink hover:bg-surface hover:text-ink sm:text-sm"
+          >
+            <ArrowLeft
+              className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1"
+              aria-hidden="true"
+            />
+            <span>Kembali</span>
+          </Link>
+        </Magnetic>
+
         <ThemeToggle />
       </header>
 
