@@ -1,410 +1,216 @@
 'use client';
 
-import { useState } from 'react';
-import { Eye, Edit3, Trash2 } from 'lucide-react';
-import { DAYS, MONTHS, PLATFORM_STYLE, STATUS_STYLE, PLATFORMS, type FilterType, type Schedule, type SchedulePlatform } from './types';
+import { useMemo } from 'react';
+
+import { DAYS, MONTHS, type Schedule } from './types';
+import {
+  byTime,
+  dateKey,
+  isDone,
+  isOverdue,
+  pad,
+  scheduleDateKey,
+  timeOf,
+} from './meta';
 
 type Props = {
   cur: Date;
-  setCur: (d: Date) => void;
-  filter: FilterType;
-  setFilter: (f: FilterType) => void;
   schedules: Schedule[];
-  setSchedules: (schedules: Schedule[]) => void;
-  selected: { date: string; items: Schedule[] } | null;
-  setSelected: (v: { date: string; items: Schedule[] } | null) => void;
-  previewScheduleId?: string | null;
-  onSelectPreviewSchedule?: (s: Schedule) => void;
-  onLoadIntoForm?: (s: Schedule) => void;
-  onDeleteSchedule?: (id: string) => void;
+  selectedDate: string;
+  onSelectDate: (key: string) => void;
+  onPrev: () => void;
+  onNext: () => void;
+  onToday: () => void;
 };
 
-const FILTERS: { label: string; value: FilterType }[] = [
-  { label: 'Semua',     value: 'all' },
-  { label: 'Instagram', value: 'Instagram' },
-  { label: 'TikTok',   value: 'TikTok' },
-  { label: 'Twitter',  value: 'Twitter' },
-];
+const navBtn =
+  'flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-line text-ink-soft transition-colors hover:border-line-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
-const toDateStr = (value: string | Date | null | undefined) => {
-  if (!value) return "";
-
-  if (value instanceof Date) {
-    const year = value.getFullYear();
-    const month = String(value.getMonth() + 1).padStart(2, "0");
-    const day = String(value.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
-  }
-
-  return String(value).slice(0, 10);
-};
-
-const toTimeStr = (value: string | Date | null | undefined): string => {
-  if (!value) return "";
-
-  const d = value instanceof Date ? value : new Date(value);
-
-  if (Number.isNaN(d.getTime())) {
-    return "";
-  }
-
-  return `${String(d.getHours()).padStart(2, "0")}:${String(
-    d.getMinutes(),
-  ).padStart(2, "0")}`;
-};
+const tone = (s: Schedule, now: Date) =>
+  isOverdue(s, now)
+    ? { chip: 'bg-danger/10 text-danger', dot: 'bg-danger' }
+    : isDone(s)
+      ? { chip: 'bg-bg text-muted', dot: 'bg-muted' }
+      : { chip: 'bg-accent-soft text-accent', dot: 'bg-accent' };
 
 export default function Calendar({
-  cur, setCur,
-  filter, setFilter,
-  schedules, setSchedules,
-  selected, setSelected,
-  previewScheduleId,
-  onSelectPreviewSchedule,
-  onLoadIntoForm,
-  onDeleteSchedule,
+  cur,
+  schedules,
+  selectedDate,
+  onSelectDate,
+  onPrev,
+  onNext,
+  onToday,
 }: Props) {
-  const today = new Date();
+  const now = new Date();
+  const todayKey = dateKey(now);
+
   const y = cur.getFullYear();
   const m = cur.getMonth();
-  const firstDay    = new Date(y, m, 1).getDay();
+  const firstDay = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
-  const [toggling, setToggling] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const trailing = (7 - ((firstDay + daysInMonth) % 7)) % 7;
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus schedule ini?")) return;
-
-    setDeletingId(id);
-    try {
-      const res = await fetch(`/api/schedules/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) {
-        alert("Gagal menghapus schedule");
-        return;
-      }
-
-      onDeleteSchedule?.(id);
-      
-      if (selected) {
-        const newItems = selected.items.filter(item => item.id !== id);
-        if (newItems.length === 0) {
-          setSelected(null);
-        } else {
-          setSelected({ ...selected, items: newItems });
-        }
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Terjadi kesalahan saat menghapus");
-    } finally {
-      setDeletingId(null);
+  const byDate = useMemo(() => {
+    const map = new Map<string, Schedule[]>();
+    for (const s of schedules) {
+      const k = scheduleDateKey(s);
+      if (!k) continue;
+      map.set(k, [...(map.get(k) ?? []), s]);
     }
-  };
-
-  const filtered = filter === 'all'
-    ? (schedules ?? [])
-    : (schedules ?? []).filter(s =>
-        s.schedule_platforms?.some(p => p.platform === filter)
-      );
-
-  const getDateStr = (d: number) =>
-    `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-
-  const isToday = (d: number) =>
-    today.getFullYear() === y && today.getMonth() === m && today.getDate() === d;
-
-  // Toggle is_uploaded — update platform + status schedule
-  const handleToggle = async (sp: SchedulePlatform, scheduleId: string) => {
-    setToggling(sp.id);
-
-    const res = await fetch(`/api/schedules-platforms/${sp.id}`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ is_uploaded: !sp.is_uploaded }),
-    });
-
-    if (!res.ok) {
-      setToggling(null);
-      return;
-    }
-
-    // Response berisi { platform, status }
-    const { platform: updatedPlatform, status: newStatus }: {
-      platform: SchedulePlatform;
-      status: string;
-    } = await res.json();
-
-    // Update schedules state — platform + status sekaligus
-    const updateSchedule = (s: Schedule): Schedule => {
-      if (s.id !== scheduleId) return s;
-      return {
-        ...s,
-        status: newStatus as Schedule['status'],
-        schedule_platforms: s.schedule_platforms?.map(p =>
-          p.id === updatedPlatform.id ? updatedPlatform : p
-        ),
-      };
-    };
-
-    const newSchedules = schedules.map(updateSchedule);
-    setSchedules(newSchedules);
-
-    // Update selected juga kalau sedang terbuka
-    if (selected) {
-      setSelected({
-        ...selected,
-        items: selected.items.map(updateSchedule),
-      });
-    }
-
-    setToggling(null);
-  };
+    map.forEach((list) => list.sort(byTime));
+    return map;
+  }, [schedules]);
 
   return (
-    <>
-      {/* ── Header + Filter ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-medium text-white">Schedule</h1>
-          <p className="text-xs text-zinc-500 mt-1">{MONTHS[m]} {y} · Kelola jadwal konten</p>
+    <section
+      aria-label={`Kalender ${MONTHS[m]} ${y}`}
+      className="overflow-hidden rounded-2xl border border-line bg-surface"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
+        <h2 className="text-base font-semibold tracking-tight text-ink sm:text-lg">
+          {MONTHS[m]} {y}
+        </h2>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onToday}
+            className="h-9 cursor-pointer rounded-lg border border-line px-3 text-xs font-medium text-ink-soft transition-colors hover:border-line-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            Hari ini
+          </button>
+          <button
+            type="button"
+            onClick={onPrev}
+            aria-label="Bulan sebelumnya"
+            className={navBtn}
+          >
+            <i className="ti ti-chevron-left text-lg" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={onNext}
+            aria-label="Bulan berikutnya"
+            className={navBtn}
+          >
+            <i className="ti ti-chevron-right text-lg" aria-hidden="true" />
+          </button>
         </div>
-        <div className="flex gap-2">
-          {FILTERS.map(f => (
+      </div>
+
+      {/* Nama hari */}
+      <div className="grid grid-cols-7 border-b border-line bg-bg/60">
+        {DAYS.map((d) => (
+          <div
+            key={d}
+            className="py-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted"
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Grid tanggal */}
+      <div className="grid grid-cols-7 gap-px bg-line">
+        {Array.from({ length: firstDay }).map((_, i) => (
+          <div key={`lead-${i}`} className="bg-bg/60" />
+        ))}
+
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const d = i + 1;
+          const key = `${y}-${pad(m + 1)}-${pad(d)}`;
+          const items = byDate.get(key) ?? [];
+          const isToday = key === todayKey;
+          const isSelected = key === selectedDate;
+
+          return (
             <button
-              key={f.value}
-              onClick={() => { setFilter(f.value); setSelected(null); }}
-              className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
-                filter === f.value
-                  ? 'bg-zinc-800 text-white border-zinc-700'
-                  : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-white'
+              key={key}
+              type="button"
+              onClick={() => onSelectDate(key)}
+              aria-pressed={isSelected}
+              aria-label={`${d} ${MONTHS[m]} ${y}${
+                items.length ? `, ${items.length} jadwal` : ', tidak ada jadwal'
+              }`}
+              className={`relative flex min-h-[64px] cursor-pointer flex-col items-stretch gap-1 bg-surface p-1.5 text-left transition-colors hover:bg-bg focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-accent md:min-h-[108px] md:p-2 ${
+                isSelected ? 'z-10 ring-2 ring-inset ring-accent' : ''
               }`}
             >
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Navigasi Bulan ── */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => { setCur(new Date(y, m - 1, 1)); setSelected(null); }}
-          className="w-7 h-7 flex items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 hover:bg-zinc-800 transition-colors"
-        >
-          ‹
-        </button>
-        <span className="text-sm font-medium text-white">{MONTHS[m]} {y}</span>
-        <button
-          onClick={() => { setCur(new Date(y, m + 1, 1)); setSelected(null); }}
-          className="w-7 h-7 flex items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 hover:bg-zinc-800 transition-colors"
-        >
-          ›
-        </button>
-      </div>
-
-      {/* ── Grid Kalender ── */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-zinc-800">
-          {DAYS.map(d => (
-            <div key={d} className="py-2 text-center text-xs text-zinc-500 font-medium">{d}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7">
-          {Array.from({ length: firstDay }).map((_, i) => (
-            <div key={`e-${i}`} className="min-h-16 border-r border-b border-zinc-800 bg-zinc-950" />
-          ))}
-          {Array.from({ length: daysInMonth }).map((_, i) => {
-            const d       = i + 1;
-            const dateStr = getDateStr(d);
-            const dayScheds = filtered.filter(s => s.scheduled_for && toDateStr(s.scheduled_for) === dateStr);
-            const col = (firstDay + i) % 7;
-            return (
-              <div
-                key={d}
-                onClick={() => {
-                  if (dayScheds.length) {
-                    setSelected({ date: dateStr, items: dayScheds });
-                    onSelectPreviewSchedule?.(dayScheds[0]);
-                  }
-                }}
-                className={`min-h-16 p-1.5 border-b border-zinc-800 transition-colors
-                  ${col < 6 ? 'border-r border-zinc-800' : ''}
-                  ${dayScheds.length ? 'cursor-pointer hover:bg-zinc-800/50' : 'cursor-default'}
-                  ${selected?.date === dateStr ? 'bg-zinc-800/60 ring-1 ring-inset ring-blue-500/40' : ''}
-                `}
+              <span
+                className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium tabular-nums ${
+                  isToday ? 'bg-accent text-white' : 'text-ink-soft'
+                }`}
               >
-                <div className={`w-5 h-5 flex items-center justify-center text-xs mb-1 rounded-full
-                  ${isToday(d) ? 'bg-blue-600 text-white font-medium' : 'text-zinc-400'}`}>
-                  {d}
-                </div>
-                {dayScheds.slice(0, 2).map((s, idx) => {
-                  const allUploaded = s.schedule_platforms?.every(p => p.is_uploaded);
-                  const isPreviewing = previewScheduleId === s.id;
+                {d}
+              </span>
+
+              {/* Desktop: chip jadwal */}
+              <div className="hidden flex-col gap-1 md:flex">
+                {items.slice(0, 2).map((s) => {
+                  const t = tone(s, now);
                   return (
-                    <div
-                      key={idx}
-                      className={`text-[9px] px-1.5 py-0.5 rounded mb-0.5 truncate transition-all ${
-                        isPreviewing
-                          ? 'bg-blue-600 text-white font-medium ring-1 ring-white/30'
-                          : allUploaded
-                            ? 'bg-emerald-900/50 text-emerald-400'
-                            : 'bg-zinc-800 text-zinc-300'
-                      }`}
+                    <span
+                      key={s.id}
+                      className={`flex items-center gap-1 truncate rounded-md px-1.5 py-1 text-[11px] font-medium leading-none ${t.chip}`}
                     >
-                      {s.title}
-                    </div>
+                      {isDone(s) ? (
+                        <i className="ti ti-check text-[11px]" aria-hidden="true" />
+                      ) : (
+                        <span className="tabular-nums opacity-70">
+                          {timeOf(s.scheduled_for)}
+                        </span>
+                      )}
+                      <span className="truncate">{s.title}</span>
+                    </span>
                   );
                 })}
-                {dayScheds.length > 2 && (
-                  <div className="text-[9px] text-zinc-500 pl-1">+{dayScheds.length - 2} lagi</div>
+                {items.length > 2 && (
+                  <span className="px-1 text-[11px] text-muted">
+                    +{items.length - 2} lagi
+                  </span>
                 )}
               </div>
-            );
-          })}
-        </div>
+
+              {/* Mobile: titik */}
+              {items.length > 0 && (
+                <div className="mt-auto flex items-center gap-1 md:hidden">
+                  {items.slice(0, 3).map((s) => (
+                    <span
+                      key={s.id}
+                      className={`h-1.5 w-1.5 rounded-full ${tone(s, now).dot}`}
+                    />
+                  ))}
+                  {items.length > 3 && (
+                    <span className="text-[10px] leading-none text-muted">+</span>
+                  )}
+                </div>
+              )}
+            </button>
+          );
+        })}
+
+        {Array.from({ length: trailing }).map((_, i) => (
+          <div key={`trail-${i}`} className="bg-bg/60" />
+        ))}
       </div>
 
-      {/* ── Detail klik tanggal ── */}
-      {selected && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-white">
-              {parseInt(selected.date.split('-')[2])}{' '}
-              {MONTHS[parseInt(selected.date.split('-')[1]) - 1]}{' '}
-              {selected.date.split('-')[0]}
-            </p>
-            <button
-              onClick={() => setSelected(null)}
-              className="text-zinc-500 hover:text-white text-lg leading-none"
-            >
-              ×
-            </button>
-          </div>
-          <div className="flex flex-col divide-y divide-zinc-800">
-            {selected.items.map((s) => {
-              const sst = STATUS_STYLE[s.status];
-              const allUploaded = s.schedule_platforms?.every(p => p.is_uploaded);
-              const isPreviewing = previewScheduleId === s.id;
-              return (
-                <div key={s.id} className="py-3 first:pt-0 last:pb-0">
-
-                  {/* Judul + waktu + aksi preview & status */}
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                      allUploaded ? 'bg-emerald-400' : 'bg-zinc-500'
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-white truncate">{s.title}</p>
-                      <p className="text-xs text-zinc-500 mt-0.5">{toTimeStr(s.scheduled_for)}</p>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {onSelectPreviewSchedule && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); onSelectPreviewSchedule(s); }}
-                          className={`px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 transition-all ${
-                            isPreviewing
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700'
-                          }`}
-                          title="Tampilkan pratinjau jadwal ini di Live Preview"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          {isPreviewing ? 'Pratinjau Aktif' : 'Pratinjau'}
-                        </button>
-                      )}
-
-                      {onLoadIntoForm && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); onLoadIntoForm(s); }}
-                          className="px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-all"
-                          title="Muat isi jadwal ini ke form"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                          Salin ke Form
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}
-                        disabled={deletingId === s.id}
-                        className="px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 bg-red-900/30 text-red-400 hover:text-white hover:bg-red-600 transition-all disabled:opacity-50"
-                        title="Hapus Jadwal"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        {deletingId === s.id ? 'Menghapus...' : 'Hapus'}
-                      </button>
-
-                      <span
-                        className="text-[10px] px-2 py-0.5 rounded-full"
-                        style={{ background: sst.bg, color: sst.tc }}
-                      >
-                        {sst.label}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Checklist platform */}
-                  <div className="flex flex-col gap-1.5 pl-5">
-                    {PLATFORMS.map(platform => {
-                      const sp = s.schedule_platforms?.find(p => p.platform === platform);
-                      if (!sp) return null;
-                      const st = PLATFORM_STYLE[platform];
-                      const isToggling = toggling === sp.id;
-                      return (
-                        <button
-                          key={platform}
-                          onClick={(e) => { e.stopPropagation(); handleToggle(sp, s.id); }}
-                          disabled={isToggling}
-                          className="flex items-center gap-2.5 w-full text-left disabled:opacity-50 transition-opacity"
-                        >
-                          {/* Checkbox */}
-                          <div
-                            className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 ${
-                              sp.is_uploaded ? 'border-transparent' : 'border-zinc-600 bg-transparent'
-                            }`}
-                            style={sp.is_uploaded ? { background: st.color } : {}}
-                          >
-                            {sp.is_uploaded && (
-                              <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                                <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                            )}
-                          </div>
-
-                          {/* Label platform */}
-                          <span
-                            className="text-xs px-2 py-0.5 rounded-full"
-                            style={{ background: st.bg, color: st.tc }}
-                          >
-                            {platform}
-                          </span>
-
-                          {/* Waktu upload */}
-                          {sp.is_uploaded && sp.uploaded_at && (
-                            <span className="text-[10px] text-zinc-500 ml-auto">
-                              {new Date(sp.uploaded_at).toLocaleTimeString('id-ID', {
-                                hour: '2-digit', minute: '2-digit'
-                              })}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </>
+      {/* Legenda */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line px-4 py-3 text-[11px] text-muted sm:px-5">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-accent" />
+          Belum diunggah
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-muted" />
+          Selesai
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-danger" />
+          Terlewat
+        </span>
+      </div>
+    </section>
   );
 }

@@ -1,270 +1,580 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { type Platform } from "./types";
+import { useEffect, useState, type DragEvent, type FormEvent } from 'react';
+
+import Dialog from '@/app/components/ui/Dialog';
+import LivePreview from './livePreview';
+import TemplateModal from './templateModal';
+import { PLATFORMS, type Platform, type Schedule, type Template } from './types';
+import { PLATFORM_ICON, PLATFORM_LIMIT, dateKey } from './meta';
+
+export type ComposerInitial = {
+  title?: string;
+  caption?: string;
+  date?: string; // YYYY-MM-DD
+  time?: string; // HH:mm
+  imageUrl?: string | null;
+};
 
 type Props = {
-  title: string;
-  setTitle: (v: string) => void;
-  platform: Platform;
-  setPlatform: (v: Platform) => void;
-  scheduledFor: string;
-  setScheduledFor: (v: string) => void;
-  caption: string;
-  setCaption: (v: string) => void;
-  successMsg: boolean;
-  onSave: () => void;
-  onOpenTemplates: () => void;
-  onPhotoPreviewChange?: (url: string | null) => void;
-  onPhotoFileChange?: (file: File | null) => void;
+  initial?: ComposerInitial;
+  templates: Template[];
+  onSaved: (s: Schedule) => void;
+  onClose: () => void;
 };
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const ALLOWED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'webp'];
+const TIME_PRESETS = ['07:00', '12:00', '16:00', '19:00'];
 
-const isValidMediaFile = (file: File) => {
-  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
-  const hasAllowedType = ALLOWED_IMAGE_TYPES.includes(file.type);
-  const hasAllowedExtension = ALLOWED_IMAGE_EXTENSIONS.includes(
-    `.${extension}`,
+const isValidImage = (f: File) => {
+  const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+  return (
+    (ALLOWED_TYPES.includes(f.type) || ALLOWED_EXT.includes(ext)) &&
+    f.size <= MAX_FILE_SIZE
   );
-
-  return (hasAllowedType || hasAllowedExtension) && file.size <= MAX_FILE_SIZE;
 };
 
+const fieldClass = (err: boolean) =>
+  `w-full rounded-xl border bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-muted focus:ring-2 ${
+    err
+      ? 'border-danger focus:ring-danger/20'
+      : 'border-line focus:border-accent focus:ring-accent/20'
+  }`;
+
+const chip =
+  'cursor-pointer rounded-full border border-line px-2.5 py-1 text-xs font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+
 export default function ScheduleForm({
-  title,
-  setTitle,
-  platform,
-  setPlatform,
-  scheduledFor,
-  setScheduledFor,
-  caption,
-  setCaption,
-  successMsg,
-  onSave,
-  onOpenTemplates,
-  onPhotoPreviewChange,
-  onPhotoFileChange,
+  initial,
+  templates,
+  onSaved,
+  onClose,
 }: Props) {
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [photoError, setPhotoError] = useState<string>("");
+  const [title, setTitle] = useState(initial?.title ?? '');
+  const [caption, setCaption] = useState(initial?.caption ?? '');
+  const [date, setDate] = useState(initial?.date ?? dateKey(new Date()));
+  const [time, setTime] = useState(initial?.time ?? '09:00');
+  const [previewPlatform, setPreviewPlatform] = useState<Platform>('Instagram');
 
+  const [file, setFile] = useState<File | null>(null);
+  const [existingImage, setExistingImage] = useState<string | null>(
+    initial?.imageUrl ?? null,
+  );
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+
+  const [errors, setErrors] = useState<{ title?: string; when?: string }>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [tab, setTab] = useState<'form' | 'preview'>('form');
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+
+  // URL sementara untuk pratinjau foto yang dipilih
   useEffect(() => {
-    return () => {
-      if (photoPreview) {
-        URL.revokeObjectURL(photoPreview);
-      }
-    };
-  }, [photoPreview]);
-
-  useEffect(() => {
-    if (successMsg) {
-      setPhotoFile(null);
-      setPhotoPreview(null);
-      setPhotoError("");
-      onPhotoPreviewChange?.(null);
-      onPhotoFileChange?.(null);
-    }
-  }, [successMsg, onPhotoPreviewChange, onPhotoFileChange]);
-
-  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-
     if (!file) {
+      setObjectUrl(null);
       return;
     }
+    const url = URL.createObjectURL(file);
+    setObjectUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
-    if (!isValidMediaFile(file)) {
-      setPhotoFile(null);
-      setPhotoPreview((prev) => {
-        if (prev) {
-          URL.revokeObjectURL(prev);
-        }
-        return null;
-      });
-      onPhotoPreviewChange?.(null);
-      onPhotoFileChange?.(null);
-      setPhotoError(
-        "Format file tidak valid. Gunakan JPG, JPEG, PNG, atau WebP dengan ukuran maksimal 10 MB.",
-      );
-      event.target.value = "";
-      return;
-    }
+  const photo = objectUrl ?? existingImage;
 
-    setPhotoError("");
+  const limit = PLATFORM_LIMIT[previewPlatform];
+  const over = caption.length > limit;
 
-    if (photoPreview) {
-      URL.revokeObjectURL(photoPreview);
-    }
+  const when = date && time ? new Date(`${date}T${time}`) : null;
+  const isPast = when !== null && when.getTime() < Date.now();
 
-    const objectUrl = URL.createObjectURL(file);
-    setPhotoFile(file);
-    setPhotoPreview(objectUrl);
-    onPhotoPreviewChange?.(objectUrl);
-    onPhotoFileChange?.(file);
-    event.target.value = "";
+  const dirty =
+    title !== (initial?.title ?? '') ||
+    caption !== (initial?.caption ?? '') ||
+    file !== null;
+
+  const requestClose = () => {
+    if (saving) return;
+    if (dirty) setConfirmDiscard(true);
+    else onClose();
   };
 
-  const handleRemovePhoto = () => {
-    setPhotoFile(null);
-    setPhotoPreview((prev) => {
-      if (prev) {
-        URL.revokeObjectURL(prev);
+  const setQuickDate = (offset: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    setDate(dateKey(d));
+    setErrors((p) => ({ ...p, when: undefined }));
+  };
+
+  const pickFile = (f: File | undefined) => {
+    if (!f) return;
+    if (!isValidImage(f)) {
+      setPhotoError('Gunakan JPG, PNG, atau WebP dengan ukuran maksimal 10 MB.');
+      return;
+    }
+    setPhotoError('');
+    setFile(f);
+  };
+
+  const removePhoto = () => {
+    setFile(null);
+    setExistingImage(null);
+    setPhotoError('');
+  };
+
+  const onDrop = (e: DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setDragging(false);
+    pickFile(e.dataTransfer.files?.[0]);
+  };
+
+  const applyTemplate = (t: Template) => {
+    setCaption(t.content);
+    if (!title.trim()) setTitle(t.name);
+    setPreviewPlatform(t.platform);
+    setTemplatesOpen(false);
+  };
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (saving) return;
+
+    const next: { title?: string; when?: string } = {};
+    if (!title.trim()) next.title = 'Judul konten wajib diisi.';
+    if (!date || !time) next.when = 'Tanggal dan waktu wajib diisi.';
+    setErrors(next);
+    if (next.title || next.when) {
+      setTab('form');
+      return;
+    }
+
+    setSaving(true);
+    setServerError(null);
+
+    try {
+      let imageUrl: string | null = existingImage;
+
+      if (file) {
+        const fd = new FormData();
+        fd.append('file', file);
+
+        const up = await fetch('/api/uploads/schedule', {
+          method: 'POST',
+          body: fd,
+        });
+        const upData = await up.json().catch(() => ({}));
+
+        if (!up.ok || !upData.success) {
+          setServerError(upData.error || 'Gagal mengupload foto. Coba lagi.');
+          setSaving(false);
+          return;
+        }
+        imageUrl = upData.url;
       }
-      return null;
-    });
-    onPhotoPreviewChange?.(null);
-    onPhotoFileChange?.(null);
-    setPhotoError("");
+
+      const res = await fetch('/api/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          caption: caption.trim(),
+          status: 'scheduled',
+          scheduled_for: new Date(`${date}T${time}`).toISOString(),
+          image_url: imageUrl,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setServerError(err.error ?? 'Gagal menyimpan jadwal. Coba lagi.');
+        setSaving(false);
+        return;
+      }
+
+      const saved: Schedule = await res.json();
+      onSaved(saved);
+    } catch {
+      setServerError('Tidak dapat terhubung ke server. Coba lagi.');
+      setSaving(false);
+    }
   };
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-      <p className="text-sm font-medium text-white mb-4">Tambah jadwal baru</p>
-
-      {successMsg && (
-        <div className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400">
-          Jadwal berhasil disimpan!
-        </div>
-      )}
-
-      <div className="flex flex-col gap-3">
-        {/* Judul */}
-        <div>
-          <label className="text-xs text-zinc-400 mb-1 block">
-            Judul konten
-          </label>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-zinc-600"
-            placeholder="Nama konten..."
-          />
-        </div>
-
-        {/* Tanggal & waktu */}
-        <div>
-          <label className="text-xs text-zinc-400 mb-1 block">
-            Tanggal & waktu
-          </label>
-          <input
-            type="datetime-local"
-            value={scheduledFor}
-            onChange={(e) => setScheduledFor(e.target.value)}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-600"
-          />
-        </div>
-
-        {/* Platform */}
-        <div>
-          <label className="text-xs text-zinc-400 mb-1 block">Platform</label>
-          <select
-            value={platform}
-            onChange={(e) => setPlatform(e.target.value as Platform)}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-600"
-          >
-            <option value="Instagram">Instagram</option>
-            <option value="TikTok">TikTok</option>
-            <option value="Twitter">Twitter</option>
-          </select>
-        </div>
-
-        {/* Caption + Tombol Template */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-xs text-zinc-400">Caption</label>
+    <>
+      <Dialog
+        onClose={requestClose}
+        titleId="schedule-form-title"
+        size="xl"
+        dismissOnBackdrop={false}
+      >
+        <form onSubmit={submit} noValidate>
+          {/* Header */}
+          <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
+            <div>
+              <h2
+                id="schedule-form-title"
+                className="text-lg font-semibold tracking-tight text-ink"
+              >
+                Jadwal baru
+              </h2>
+              <p className="mt-0.5 text-xs text-muted">
+                Isi detail konten dan lihat hasilnya langsung di sebelah.
+              </p>
+            </div>
             <button
               type="button"
-              onClick={onOpenTemplates}
-              className="text-xs px-2.5 py-1 rounded-lg border border-zinc-700 text-zinc-400 hover:border-zinc-600 hover:text-white transition-colors"
+              onClick={requestClose}
+              aria-label="Tutup"
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-bg hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              Pilih Template
+              <i className="ti ti-x text-lg" aria-hidden="true" />
             </button>
           </div>
-          <textarea
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            rows={5}
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-zinc-600 resize-none"
-            placeholder="Tulis caption di sini..."
-          />
-        </div>
 
-        {/* Area Visual Konten */}
-        <div>
-          <label className="text-xs text-zinc-400 mb-2 block">
-            Area Visual Konten
-          </label>
+          {/* Tab mobile */}
+          <div className="grid grid-cols-2 gap-1 border-b border-line p-2 lg:hidden">
+            {(['form', 'preview'] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                aria-pressed={tab === t}
+                className={`cursor-pointer rounded-lg py-2 text-sm font-medium transition-colors ${
+                  tab === t ? 'bg-ink text-bg' : 'text-ink-soft'
+                }`}
+              >
+                {t === 'form' ? 'Isi jadwal' : 'Pratinjau'}
+              </button>
+            ))}
+          </div>
 
-          {photoError && (
-            <div className="mb-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-              {photoError}
-            </div>
-          )}
-
-          {photoPreview ? (
-            <div className="w-full rounded-xl border border-zinc-700 bg-zinc-800/60 p-3">
-              <div className="overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900">
-                <img
-                  src={photoPreview}
-                  alt="Preview foto konten"
-                  className="h-48 w-full object-cover"
-                />
-              </div>
-
-              <div className="mt-3 flex gap-2">
-                <label className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-medium text-white transition hover:border-zinc-600 hover:bg-zinc-700">
-                  Ganti Foto
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                    onChange={handlePhotoChange}
-                    className="hidden"
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  onClick={handleRemovePhoto}
-                  className="inline-flex items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-500/20"
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_400px]">
+            {/* ───── Kolom form ───── */}
+            <div
+              className={`flex flex-col gap-5 p-6 ${
+                tab === 'form' ? 'flex' : 'hidden lg:flex'
+              }`}
+            >
+              {serverError && (
+                <div
+                  role="alert"
+                  className="flex items-start gap-2.5 rounded-xl border border-danger/30 bg-danger/10 px-3.5 py-3 text-sm text-danger"
                 >
-                  Hapus
-                </button>
-              </div>
-            </div>
-          ) : (
-            <label className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-700 bg-zinc-800/60 px-4 py-6 text-center transition hover:border-zinc-600 hover:bg-zinc-800">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-700/70 text-sm font-semibold text-white">
-                +
-              </div>
+                  <i className="ti ti-alert-circle mt-0.5 text-base" aria-hidden="true" />
+                  <p>{serverError}</p>
+                </div>
+              )}
+
+              {/* Judul */}
               <div>
-                <p className="text-sm font-medium text-white">Upload Foto</p>
-                <p className="text-[11px] text-zinc-500">
-                  JPG, JPEG, PNG, WebP • Maks. 10 MB
+                <label htmlFor="sch-title" className="mb-1.5 block text-sm font-medium text-ink">
+                  Judul konten
+                </label>
+                <input
+                  id="sch-title"
+                  autoFocus
+                  value={title}
+                  maxLength={255}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    if (errors.title) setErrors((p) => ({ ...p, title: undefined }));
+                  }}
+                  aria-invalid={Boolean(errors.title)}
+                  aria-describedby={errors.title ? 'sch-title-err' : undefined}
+                  placeholder="Contoh: Laporan Harian Disdukcapil"
+                  className={fieldClass(Boolean(errors.title))}
+                />
+                {errors.title && (
+                  <p id="sch-title-err" className="mt-1.5 text-xs text-danger">
+                    {errors.title}
+                  </p>
+                )}
+              </div>
+
+              {/* Tanggal & waktu */}
+              <fieldset>
+                <legend className="mb-1.5 text-sm font-medium text-ink">
+                  Tanggal & waktu tayang
+                </legend>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => {
+                      setDate(e.target.value);
+                      if (errors.when) setErrors((p) => ({ ...p, when: undefined }));
+                    }}
+                    aria-label="Tanggal"
+                    aria-invalid={Boolean(errors.when)}
+                    className={fieldClass(Boolean(errors.when))}
+                  />
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={(e) => {
+                      setTime(e.target.value);
+                      if (errors.when) setErrors((p) => ({ ...p, when: undefined }));
+                    }}
+                    aria-label="Waktu"
+                    aria-invalid={Boolean(errors.when)}
+                    className={fieldClass(Boolean(errors.when))}
+                  />
+                </div>
+
+                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                  <button type="button" onClick={() => setQuickDate(0)} className={chip}>
+                    Hari ini
+                  </button>
+                  <button type="button" onClick={() => setQuickDate(1)} className={chip}>
+                    Besok
+                  </button>
+                  <span className="mx-1 h-4 w-px bg-line" aria-hidden="true" />
+                  {TIME_PRESETS.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTime(t)}
+                      className={`${chip} tabular-nums ${
+                        time === t ? '!border-accent !bg-accent-soft !text-accent' : ''
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+
+                {errors.when ? (
+                  <p className="mt-1.5 text-xs text-danger">{errors.when}</p>
+                ) : isPast ? (
+                  <p className="mt-1.5 flex items-center gap-1 text-xs text-danger">
+                    <i className="ti ti-alert-triangle text-sm" aria-hidden="true" />
+                    Waktu ini sudah lewat. Jadwal akan langsung tampil sebagai terlewat.
+                  </p>
+                ) : null}
+              </fieldset>
+
+              {/* Caption */}
+              <div>
+                <div className="mb-1.5 flex items-center justify-between gap-3">
+                  <label htmlFor="sch-caption" className="text-sm font-medium text-ink">
+                    Caption
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setTemplatesOpen(true)}
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-accent hover:bg-accent-soft hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <i className="ti ti-file-text text-sm" aria-hidden="true" />
+                    Pakai template
+                  </button>
+                </div>
+                <textarea
+                  id="sch-caption"
+                  value={caption}
+                  rows={7}
+                  onChange={(e) => setCaption(e.target.value)}
+                  onKeyDown={(e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                      e.currentTarget.form?.requestSubmit();
+                    }
+                  }}
+                  placeholder="Tulis caption di sini…"
+                  className={`${fieldClass(false)} resize-y leading-relaxed`}
+                />
+                <p
+                  className={`mt-1.5 text-xs tabular-nums ${
+                    over ? 'text-danger' : 'text-muted'
+                  }`}
+                >
+                  {caption.length.toLocaleString('id-ID')}/
+                  {limit.toLocaleString('id-ID')} karakter (batas{' '}
+                  {previewPlatform === 'Twitter' ? 'X' : previewPlatform})
                 </p>
               </div>
-              <input
-                type="file"
-                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                onChange={handlePhotoChange}
-                className="hidden"
-              />
-            </label>
-          )}
-        </div>
 
-        {/* Submit */}
-        <button
-          type="button"
-          onClick={onSave}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 rounded-lg transition-colors"
-        >
-          Simpan Jadwal
-        </button>
-      </div>
-    </div>
+              {/* Foto */}
+              <div>
+                <p className="mb-1.5 text-sm font-medium text-ink">
+                  Foto konten <span className="font-normal text-muted">(opsional)</span>
+                </p>
+
+                {photoError && (
+                  <p role="alert" className="mb-2 text-xs text-danger">
+                    {photoError}
+                  </p>
+                )}
+
+                {photo ? (
+                  <div className="flex items-center gap-3 rounded-xl border border-line p-3">
+                    <img
+                      src={photo}
+                      alt="Foto konten"
+                      className="h-16 w-16 shrink-0 rounded-lg border border-line object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-ink">
+                        {file?.name ?? 'Foto dari jadwal sebelumnya'}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {file
+                          ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
+                          : 'Digunakan ulang'}
+                      </p>
+                    </div>
+                    <label className="cursor-pointer rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink-soft hover:border-line-strong hover:text-ink focus-within:outline-2 focus-within:outline-accent">
+                      Ganti
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        onChange={(e) => {
+                          pickFile(e.target.files?.[0]);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={removePhoto}
+                      className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium text-danger hover:bg-danger/10"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragging(true);
+                    }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={onDrop}
+                    className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-dashed px-4 py-6 text-center transition-colors focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent ${
+                      dragging
+                        ? 'border-accent bg-accent-soft'
+                        : 'border-line-strong hover:border-accent hover:bg-accent-soft/40'
+                    }`}
+                  >
+                    <i className="ti ti-photo-up text-2xl text-accent" aria-hidden="true" />
+                    <p className="text-sm text-ink-soft">
+                      Tarik foto ke sini atau{' '}
+                      <span className="font-medium text-accent">pilih file</span>
+                    </p>
+                    <p className="text-xs text-muted">JPG, PNG, WebP · maks. 10 MB</p>
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      onChange={(e) => {
+                        pickFile(e.target.files?.[0]);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Info platform */}
+              <div className="flex items-start gap-3 rounded-xl bg-bg p-3.5">
+                <i className="ti ti-info-circle mt-0.5 text-base text-accent" aria-hidden="true" />
+                <div className="text-xs leading-relaxed text-muted">
+                  <p>
+                    Jadwal dibuat untuk <span className="font-medium text-ink">semua platform</span>.
+                    Centang tiap platform di agenda setelah konten diunggah.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {PLATFORMS.map((p) => (
+                      <span
+                        key={p}
+                        className="inline-flex items-center gap-1 rounded-full border border-line bg-surface px-2 py-0.5 text-[11px] font-medium text-ink-soft"
+                      >
+                        <i className={`ti ${PLATFORM_ICON[p]} text-xs`} aria-hidden="true" />
+                        {p === 'Twitter' ? 'X' : p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ───── Kolom pratinjau ───── */}
+            <aside
+              className={`border-t border-line bg-bg p-5 lg:border-l lg:border-t-0 ${
+                tab === 'preview' ? 'block' : 'hidden lg:block'
+              }`}
+            >
+              <p className="mb-3 text-sm font-medium text-ink">Pratinjau langsung</p>
+              <LivePreview
+                platform={previewPlatform}
+                setPlatform={setPreviewPlatform}
+                title={title}
+                caption={caption}
+                photo={photo}
+              />
+            </aside>
+          </div>
+
+          {/* Footer */}
+          <div className="flex flex-wrap items-center gap-3 border-t border-line px-6 py-4">
+            {confirmDiscard ? (
+              <div role="alert" className="flex w-full flex-wrap items-center gap-3">
+                <p className="text-sm text-ink">Buang perubahan yang belum disimpan?</p>
+                <div className="ml-auto flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDiscard(false)}
+                    className="cursor-pointer rounded-xl border border-line px-4 py-2 text-sm font-medium text-ink-soft hover:border-line-strong hover:text-ink"
+                  >
+                    Lanjut mengisi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="cursor-pointer rounded-xl bg-danger px-4 py-2 text-sm font-medium text-bg hover:opacity-90"
+                  >
+                    Buang
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="ml-auto flex gap-2">
+                <button
+                  type="button"
+                  onClick={requestClose}
+                  disabled={saving}
+                  className="cursor-pointer rounded-xl border border-line px-4 py-2.5 text-sm font-medium text-ink-soft transition-colors hover:border-line-strong hover:text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex min-w-36 cursor-pointer items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  {saving && (
+                    <i className="ti ti-loader-2 animate-spin text-base" aria-hidden="true" />
+                  )}
+                  {saving ? 'Menyimpan…' : 'Simpan jadwal'}
+                </button>
+              </div>
+            )}
+          </div>
+        </form>
+      </Dialog>
+
+      {templatesOpen && (
+        <TemplateModal
+          templates={templates}
+          onSelect={applyTemplate}
+          onClose={() => setTemplatesOpen(false)}
+        />
+      )}
+    </>
   );
 }

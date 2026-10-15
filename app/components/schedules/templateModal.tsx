@@ -1,7 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { PLATFORM_STYLE, type Template } from './types';
+import Link from 'next/link';
+
+import Dialog from '@/app/components/ui/Dialog';
+import { PLATFORMS, type Platform, type Template } from './types';
+import { PLATFORM_ICON } from './meta';
 
 type Props = {
   templates: Template[];
@@ -9,86 +13,135 @@ type Props = {
   onClose: () => void;
 };
 
-export default function TemplateModal({ templates, onSelect, onClose }: Props) {
-  // 1. Tambahkan state untuk query pencarian
-  const [searchQuery, setSearchQuery] = useState('');
+type Filter = 'all' | Platform;
 
-  // 2. Filter template berdasarkan nama atau konten (case-insensitive)
-  const filteredTemplates = templates.filter(t => {
-    const query = searchQuery.toLowerCase();
-    return (
-      t.name.toLowerCase().includes(query) ||
-      t.content.toLowerCase().includes(query) ||
-      t.platform.toLowerCase().includes(query)
-    );
-  });
+export default function TemplateModal({ templates, onSelect, onClose }: Props) {
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
+
+  const q = query.trim().toLowerCase();
+
+  const list = templates.filter(
+    (t) =>
+      (filter === 'all' || t.platform === filter) &&
+      (!q ||
+        t.name.toLowerCase().includes(q) ||
+        t.content.toLowerCase().includes(q)),
+  );
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
+    <Dialog onClose={onClose} titleId="template-picker-title" size="md">
+      <div className="flex max-h-[85vh] flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between mb-3 shrink-0">
-          <p className="text-sm font-medium text-white">Pilih Template</p>
+        <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
+          <div>
+            <h2
+              id="template-picker-title"
+              className="text-lg font-semibold tracking-tight text-ink"
+            >
+              Pilih template
+            </h2>
+            <p className="mt-0.5 text-xs text-muted">
+              Caption akan terisi otomatis. Kamu masih bisa mengeditnya.
+            </p>
+          </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-zinc-500 hover:text-white text-lg leading-none transition-colors"
+            aria-label="Tutup"
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-bg hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            ×
+            <i className="ti ti-x text-lg" aria-hidden="true" />
           </button>
         </div>
 
-        {/* 3. Input Pencarian */}
-        <div className="mb-4 shrink-0">
-          <input
-            type="text"
-            placeholder="Cari template berdasarkan nama atau platform..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-zinc-600 transition-colors"
-          />
+        {/* Pencarian + filter */}
+        <div className="flex flex-col gap-3 px-6 pt-4">
+          <div className="relative">
+            <i
+              className="ti ti-search pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-muted"
+              aria-hidden="true"
+            />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Cari template"
+              placeholder="Cari nama atau isi template…"
+              className="w-full rounded-xl border border-line bg-surface py-2.5 pl-10 pr-3 text-sm text-ink outline-none transition-colors placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/20"
+            />
+          </div>
+
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {(['all', ...PLATFORMS] as Filter[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                aria-pressed={filter === f}
+                className={`shrink-0 cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                  filter === f
+                    ? 'border-ink bg-ink text-bg'
+                    : 'border-line text-ink-soft hover:border-line-strong hover:text-ink'
+                }`}
+              >
+                {f === 'all' ? 'Semua' : f}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Grid template — menggunakan filteredTemplates */}
-        <div className="overflow-y-auto grid grid-cols-2 gap-3 pr-1">
-          {filteredTemplates.length === 0 ? (
-            <p className="text-xs text-zinc-500 col-span-2 text-center py-8">
-              {templates.length === 0 
-                ? "Belum ada template tersedia." 
-                : "Tidak ada template yang cocok dengan pencarian."}
-            </p>
-          ) : (
-            filteredTemplates.map(t => {
-              const st = PLATFORM_STYLE[t.platform];
-              return (
-                <div
-                  key={t.id}
-                  onClick={() => onSelect(t)}
-                  className="border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50 rounded-lg p-3 cursor-pointer transition-colors"
+        {/* Daftar */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          {list.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-10 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-soft text-accent">
+                <i className="ti ti-file-off text-xl" aria-hidden="true" />
+              </span>
+              <p className="text-sm text-muted">
+                {templates.length === 0
+                  ? 'Belum ada template tersimpan.'
+                  : 'Tidak ada template yang cocok.'}
+              </p>
+              {templates.length === 0 && (
+                <Link
+                  href="/template"
+                  className="text-xs font-medium text-accent hover:underline"
                 >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-xs font-medium text-white truncate mr-2">{t.name}</p>
-                    <span
-                      className="text-[9px] px-1.5 py-0.5 rounded-full shrink-0"
-                      style={{ background: st.bg, color: st.tc }}
-                    >
-                      {t.platform}
+                  Buat template di halaman Template
+                </Link>
+              )}
+            </div>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {list.map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(t)}
+                    className="flex w-full cursor-pointer items-start gap-3 rounded-xl border border-line p-3 text-left transition-colors hover:border-accent hover:bg-accent-soft/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                      <i
+                        className={`ti ${PLATFORM_ICON[t.platform]} text-lg`}
+                        aria-hidden="true"
+                      />
                     </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-500 line-clamp-2 leading-relaxed">
-                    {t.content}
-                  </p>
-                </div>
-              );
-            })
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-ink">
+                        {t.name}
+                      </span>
+                      <span className="mt-0.5 line-clamp-2 block text-xs leading-relaxed text-muted">
+                        {t.content}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

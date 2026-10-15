@@ -13,6 +13,7 @@
   --color-line-strong: #cfcfc7;
   --color-accent: #1550d8;
   --color-accent-soft: #edf2ff;
+  --color-danger: #d92d20;
 
   /* hero oranye (sama di mode terang & gelap) */
   --color-hero: #ff6b2f;
@@ -37,6 +38,7 @@
   --color-line-strong: #3c3c42;
   --color-accent: #5b8dff;
   --color-accent-soft: #1c2540;
+  --color-danger: #ff7a70;
 }
 
 .dark .skeleton {
@@ -57,9 +59,17 @@
     background: var(--color-ink);
     color: var(--color-bg);
   }
-  /* custom cursor hanya di perangkat dengan mouse */
-  @media (pointer: fine) {
-    body {
+  /* cursor bawaan HANYA disembunyikan saat <CustomCursor /> sedang aktif.
+     Komponen itu memasang class .has-custom-cursor di <html> saat mount dan
+     melepasnya saat unmount. Tanpa class ini (halaman yang tidak memasang
+     CustomCursor, reduced-motion, layar sentuh) cursor bawaan tetap tampil. */
+  @media (pointer: fine) and (min-width: 768px) {
+    html.has-custom-cursor body,
+    html.has-custom-cursor a,
+    html.has-custom-cursor button,
+    html.has-custom-cursor label,
+    html.has-custom-cursor [role='button'],
+    html.has-custom-cursor [data-cursor] {
       cursor: none;
     }
   }
@@ -69,14 +79,16 @@
    STATE AWAL UNTUK SCROLL / FADE ANIMATION
 ============================================================ */
 [data-reveal],
-[data-reveal-group] > * {
+[data-reveal-group] > *,
+[data-auth-in] {
   opacity: 0;
   will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
   [data-reveal],
-  [data-reveal-group] > * {
+  [data-reveal-group] > *,
+  [data-auth-in] {
     opacity: 1 !important;
     transform: none !important;
   }
@@ -460,5 +472,66 @@
   }
   .flow-step:nth-child(even) .flow-stem {
     left: calc(50% + var(--shift) + var(--node) / 2);
+  }
+}
+/* ============================================================
+   DASHBOARD — entrance, marquee, spotlight
+============================================================ */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  opacity: 0;
+  animation: rise 0.95s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--d, 0ms);
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: marquee 32s linear infinite;
+}
+
+/* cahaya oranye yang mengikuti kursor di dalam kartu */
+.spot {
+  position: relative;
+}
+.spot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+  background: radial-gradient(
+    420px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, var(--color-hero) 18%, transparent),
+    transparent 60%
+  );
+}
+.spot:hover::before {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    opacity: 1;
+    animation: none;
+  }
+  .marquee-track {
+    animation: none;
   }
 }
